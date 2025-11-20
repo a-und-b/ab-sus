@@ -47,35 +47,35 @@ function participantFromDb(row: Record<string, unknown>): Participant {
   const food: FoodItem | undefined =
     row.food_name && row.food_category
       ? {
-          name: row.food_name,
+          name: row.food_name as string,
           category: row.food_category as FoodCategory,
-          description: row.food_description || undefined,
-          isVegan: row.food_is_vegan || false,
-          isGlutenFree: row.food_is_gluten_free || false,
-          isLactoseFree: row.food_is_lactose_free || false,
-          containsAlcohol: row.food_contains_alcohol || false,
-          containsNuts: row.food_contains_nuts || false,
+          description: (row.food_description as string) || undefined,
+          isVegan: (row.food_is_vegan as boolean) || false,
+          isGlutenFree: (row.food_is_gluten_free as boolean) || false,
+          isLactoseFree: (row.food_is_lactose_free as boolean) || false,
+          containsAlcohol: (row.food_contains_alcohol as boolean) || false,
+          containsNuts: (row.food_contains_nuts as boolean) || false,
         }
       : undefined;
 
   return {
-    id: row.id,
-    name: row.name,
-    email: row.email,
+    id: row.id as string,
+    name: row.name as string,
+    email: row.email as string,
     status: row.status as Participant['status'],
-    avatarStyle: (row.avatar_style || 'micah') as AvatarStyle,
-    avatarSeed: row.avatar_seed || row.name,
-    avatarImage: row.avatar_image || undefined,
-    plusOne: row.plus_one || undefined,
-    plusOneAllergies: row.plus_one_allergies || undefined,
+    avatarStyle: ((row.avatar_style as string) || 'micah') as AvatarStyle,
+    avatarSeed: (row.avatar_seed as string) || (row.name as string),
+    avatarImage: (row.avatar_image as string) || undefined,
+    plusOne: (row.plus_one as string) || undefined,
+    plusOneAllergies: (row.plus_one_allergies as string) || undefined,
     food,
     showNameInBuffet: row.show_name_in_buffet !== false,
-    allergies: row.allergies || undefined,
-    isSecretSanta: row.is_secret_santa || false,
-    wantsInvoice: row.wants_invoice || false,
-    contribution: row.contribution || undefined,
-    notes: row.notes || undefined,
-    lastUpdated: row.last_updated || new Date().toISOString(),
+    allergies: (row.allergies as string) || undefined,
+    isSecretSanta: (row.is_secret_santa as boolean) || false,
+    wantsInvoice: (row.wants_invoice as boolean) || false,
+    contribution: (row.contribution as string) || undefined,
+    notes: (row.notes as string) || undefined,
+    lastUpdated: (row.last_updated as string) || new Date().toISOString(),
   };
 }
 
@@ -101,20 +101,20 @@ function configToDb(c: EventConfig) {
 
 function configFromDb(row: Record<string, unknown>): EventConfig {
   return {
-    title: row.title,
-    subtitle: row.subtitle || '',
-    date: row.date || '',
-    time: row.time || '',
-    location: row.location || '',
-    maxGuests: row.max_guests || 30,
-    allowPlusOne: row.allow_plus_one || false,
-    secretSantaLimit: row.secret_santa_limit || 15,
-    dietaryOptions: row.dietary_options || [],
-    cost: row.cost || '',
-    hosts: row.hosts || '',
-    program: row.program || '',
-    contactEmail: row.contact_email || '',
-    rsvpDeadline: row.rsvp_deadline || '',
+    title: row.title as string,
+    subtitle: (row.subtitle as string) || '',
+    date: (row.date as string) || '',
+    time: (row.time as string) || '',
+    location: (row.location as string) || '',
+    maxGuests: (row.max_guests as number) || 30,
+    allowPlusOne: (row.allow_plus_one as boolean) || false,
+    secretSantaLimit: (row.secret_santa_limit as number) || 15,
+    dietaryOptions: (row.dietary_options as string[]) || [],
+    cost: (row.cost as string) || '',
+    hosts: (row.hosts as string) || '',
+    program: (row.program as string) || '',
+    contactEmail: (row.contact_email as string) || '',
+    rsvpDeadline: (row.rsvp_deadline as string) || '',
   };
 }
 
@@ -131,22 +131,22 @@ function templateToDb(t: EmailTemplate) {
 
 function templateFromDb(row: Record<string, unknown>): EmailTemplate {
   return {
-    id: row.id,
-    name: row.name,
-    subject: row.subject,
-    body: row.body,
+    id: row.id as string,
+    name: row.name as string,
+    subject: row.subject as string,
+    body: row.body as string,
     trigger: row.trigger as EmailTemplate['trigger'],
-    description: row.description || '',
+    description: (row.description as string) || '',
   };
 }
 
 function logFromDb(row: Record<string, unknown>): EmailLog {
   return {
-    id: row.id,
-    date: row.date,
-    templateName: row.template_name,
-    recipientCount: row.recipient_count,
-    recipientsPreview: row.recipients_preview || '',
+    id: row.id as string,
+    date: row.date as string,
+    templateName: row.template_name as string,
+    recipientCount: row.recipient_count as number,
+    recipientsPreview: (row.recipients_preview as string) || '',
     status: row.status as 'sent' | 'failed',
   };
 }
@@ -272,7 +272,7 @@ class DataService {
 
     if (error || !data) {
       console.error('Error updating config:', error);
-      return current;
+      throw error || new Error('Failed to update config');
     }
 
     window.dispatchEvent(new Event(CONFIG_UPDATED_EVENT));
