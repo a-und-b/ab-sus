@@ -19,18 +19,33 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase Auth Error:', error);
+        
+        // Provide more user-friendly error messages
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Falsche E-Mail-Adresse oder Passwort');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse');
+        } else if (error.message.includes('Invalid email')) {
+          throw new Error('Ungültige E-Mail-Adresse');
+        } else {
+          throw error;
+        }
+      }
 
       if (data.user) {
         onSuccess();
       }
     } catch (err) {
       const error = err as { message?: string };
-      setError(error.message || 'Login fehlgeschlagen');
+      const errorMessage = error.message || 'Login fehlgeschlagen. Bitte versuchen Sie es erneut.';
+      console.error('Login error:', errorMessage);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
