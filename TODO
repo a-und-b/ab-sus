@@ -1,8 +1,16 @@
 # Allgemein
  - Headerbild einfügen
+ - Kalendereintrag speichern funktioniert nicht
+ - Von einem View zum anderen "springt"/scrollt die Seite unerwartet (zb. beim wechseln zwischen den Tabs)
 
 # Onboarding
+ - Name des Gastes im Prozess anzeigen
  - bei Gericht: Inspiration, Gericht, Eigenschaften, Kategorie, Notiz
  - Einstellung "Sichtbarkeit" in den Schritt "Profil" verschieben (default: sichtbar)
  - "Aktiv einbringen" unter "Wichteln" verschieben
+ - Unkostenbeitrag besser darstellen und beschreiben 
+ - Wichteln besser beschreiben
+ 
+# "Deine Teilnahme" Screen
+- Name des Gastes anzeigen
 

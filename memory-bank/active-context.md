@@ -1,6 +1,6 @@
 # Active Context
 
-**Last Updated:** 2025-11-20T20:58:47Z
+**Last Updated:** 2025-11-20T21:25:00Z
 
 ## Current Sprint/Iteration
 
@@ -10,33 +10,23 @@ Database Connection Fix & Email Domain Correction
 
 ### Current Task
 
-**Task:** Email Integration Production Ready
+**Task:** Fix Admin Location Save
 **Branch:** main
 **Started:** 2025-11-20
-**Status:** ✅ Complete - Email system ready for production
+**Status:** ✅ Complete
 
 ### Description
 
-Successfully migrated the "Selbst & Selig" Christmas party app from a Google AI Studio prototype to a production-ready application with:
-
-- Supabase backend (PostgreSQL, Auth, Edge Functions)
-- Vercel deployment
-- Real email integration (Resend-ready)
-- Secured AI features
-- Professional code quality (ESLint, Prettier, Vitest)
+Investigated and fixed a bug where updating the event location in the Admin Dashboard would fail silently and revert to the previous value.
 
 ### Progress
 
-✅ All 8 TODOs completed:
-
-1. Quality gates setup
-2. Supabase project created and schema migrated
-3. TypeScript types generated
-4. DataService refactored (LocalStorage → Supabase)
-5. Supabase Auth implemented
-6. AI Edge Function deployed
-7. Email Edge Function deployed
-8. Vercel deployment complete
+✅ All steps completed:
+1. Identified silent failure in `dataService.ts` (swallowed errors).
+2. Restored error throwing in `dataService.ts` and handling in `AdminPage.tsx`.
+3. Identified missing RLS policies for `event_config` (UPDATE/INSERT).
+4. Applied RLS policies via SQL.
+5. Verified fix.
 
 ### Next Steps
 
@@ -51,9 +41,10 @@ Ready for production:
 7. (Optional) Remove demo links from production
 8. (Optional) Clean up debug console.logs in services/supabase.ts
 
-## Recent Changes (2025-11-20T20:58:47Z)
+## Recent Changes (2025-11-20T21:25:00Z)
 
 **Critical Fixes:**
+- ✅ **Fixed Admin Save:** Added missing RLS policies for `event_config` and improved error handling.
 - ✅ Corrected email sender domain from `andersundbesser.de` to `selbst-und-selig.de`
 - ✅ Deployed updated send-email Edge Function with correct domain
 - ✅ Removed simulation mode text from email confirmation dialog

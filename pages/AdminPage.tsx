@@ -205,7 +205,6 @@ export const AdminPage: React.FC = () => {
       };
 
       try {
-        console.log('Updating config:', updatedConfig);
         await dataService.updateConfig(updatedConfig);
         await loadData();
         setConfigFeedback('Einstellungen gespeichert!');

@@ -1,8 +1,15 @@
 # Progress
 
-**Last Updated:** 2025-11-20T18:39:40Z
+**Last Updated:** 2025-11-20T21:35:00Z
 
 ## Recently Completed
+
+### 2025-11-20: Admin Location Save Bug Fix
+
+- ✅ Fixed silent failure in admin dashboard when saving settings
+- ✅ Added RLS policies for `event_config` updates
+- ✅ Improved error handling and user feedback in Admin UI
+- ✅ Verified fix by successfully updating location settings
 
 ### 2025-11-20: Authentication Error Handling Fix
 
@@ -74,6 +81,7 @@ First production deployment of "Selbst & Selig" Christmas party management app.
 
 ### November 20, 2025
 
+- 🐛 **Admin:** Fixed location saving issue (missing RLS policies & silent error swallowing)
 - 🐛 **Auth:** Improved login error handling with user-friendly German messages
 - 🐛 **Auth:** Added email trimming to prevent whitespace login failures
 - 🐛 **Auth:** Enhanced error logging for better debugging
