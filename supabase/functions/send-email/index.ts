@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
               Authorization: `Bearer ${resendApiKey}`,
             },
             body: JSON.stringify({
-              from: 'Selbst & Selig <noreply@andersundbesser.de>',
+              from: 'Selbst & Selig <noreply@selbst-und-selig.de>',
               to: email.to,
               subject: email.subject,
               html: email.html,

@@ -52,12 +52,12 @@ supabase secrets list --project-ref ohsvzndgmefzvxyxubyq
 The edge function is configured to send from:
 
 ```
-Selbst & Selig <noreply@andersundbesser.de>
+Selbst & Selig <noreply@selbst-und-selig.de>
 ```
 
 **Required Actions:**
 
-1. In [Resend Dashboard](https://resend.com/domains), verify that `andersundbesser.de` is added and verified
+1. In [Resend Dashboard](https://resend.com/domains), verify that `selbst-und-selig.de` is added and verified
 2. If not verified yet, you can:
    - Add DNS records to verify the domain (recommended)
    - Or temporarily use `onboarding@resend.dev` for testing by updating the edge function
@@ -212,7 +212,7 @@ The `send-email` edge function has been enhanced with:
 Before deploying to production:
 
 - [ ] RESEND_API_KEY is set in Supabase Edge Function secrets
-- [ ] Domain `andersundbesser.de` is verified in Resend
+- [ ] Domain `selbst-und-selig.de` is verified in Resend
 - [ ] Test email sent successfully via Admin Dashboard
 - [ ] Email logs are being created in database
 - [ ] Email templates are reviewed and finalized

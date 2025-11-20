@@ -137,7 +137,7 @@ export const DEFAULT_EVENT_CONFIG: EventConfig = {
   hosts: 'Holger, Daniela, Finn und Judith',
   program:
     'Glühwein-Empfang, Gemeinsames Buffet, Fackelwanderung, Ugly Christmas Sweater Wettbewerb, Musik & Feuerschale',
-  contactEmail: 'info@andersundbesser.de',
+  contactEmail: 'info@selbst-und-selig.de',
   rsvpDeadline: '2025-12-10',
 };
 

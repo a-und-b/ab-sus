@@ -1,19 +1,19 @@
 # Active Context
 
-**Last Updated:** 2025-11-20T20:18:29Z
+**Last Updated:** 2025-11-20T20:58:47Z
 
 ## Current Sprint/Iteration
 
-Resend Email Integration Finalization
+Database Connection Fix & Email Domain Correction
 
 ## Active Work
 
 ### Current Task
 
-**Task:** Resend Email Integration Setup & Testing
+**Task:** Email Integration Production Ready
 **Branch:** main
 **Started:** 2025-11-20
-**Status:** ✅ Code Complete - Awaiting RESEND_API_KEY configuration
+**Status:** ✅ Complete - Email system ready for production
 
 ### Description
 
@@ -40,25 +40,32 @@ Successfully migrated the "Selbst & Selig" Christmas party app from a Google AI 
 
 ### Next Steps
 
-Immediate actions required:
+Ready for production:
 
 1. ✅ ~~Add GEMINI_API_KEY to Supabase Edge Function secrets~~
-2. ⚠️ Add RESEND_API_KEY to Supabase Edge Function secrets (See RESEND_SETUP_GUIDE.md)
+2. ✅ ~~Add RESEND_API_KEY to Supabase Edge Function secrets~~
 3. ✅ ~~Create admin user in Supabase Auth~~ (2 users exist)
-4. ⚠️ Verify domain in Resend or use onboarding@resend.dev for testing
-5. ⚠️ Send first test email via Admin Dashboard (See EMAIL_TEST_CHECKLIST.md)
-6. (Optional) Remove demo links from production
+4. ✅ ~~Domain verified in Resend~~ (selbst-und-selig.de)
+5. ✅ ~~Update send-email function with correct domain~~
+6. ⚠️ Send first production test email via Admin Dashboard
+7. (Optional) Remove demo links from production
+8. (Optional) Clean up debug console.logs in services/supabase.ts
 
-## Recent Changes
+## Recent Changes (2025-11-20T20:58:47Z)
 
-- Enhanced send-email Edge Function with better error handling
-- Added individual email success/failure tracking
-- Implemented comprehensive logging for debugging
-- Created RESEND_SETUP_GUIDE.md with complete configuration steps
-- Created EMAIL_TEST_CHECKLIST.md for systematic testing
-- Created SPRINT_SUMMARY.md documenting all improvements
-- Verified admin access (2 users: holger@andersundbesser.de, daniela@andersundbesser.de)
-- Confirmed 5+ test participants and 5 email templates in database
+**Critical Fixes:**
+- ✅ Corrected email sender domain from `andersundbesser.de` to `selbst-und-selig.de`
+- ✅ Deployed updated send-email Edge Function with correct domain
+- ✅ Removed simulation mode text from email confirmation dialog
+- ✅ Added error handling to AdminPage loadData() function
+- ✅ Added Supabase client initialization logging for debugging
+- ✅ Updated all documentation with correct domain
+
+**Diagnostics Performed:**
+- ✅ Verified database connection working via Chrome DevTools inspection
+- ✅ Confirmed 6 participants, 5 templates, email logs in database
+- ✅ Tested Admin Dashboard functionality (all working)
+- ✅ Confirmed RLS policies correctly configured
 
 ## Deployment Status
 

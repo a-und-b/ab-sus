@@ -112,18 +112,28 @@ export const AdminPage: React.FC = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    const [participantsData, configData, templatesData, logsData] = await Promise.all([
-      dataService.getAll(),
-      dataService.getConfig(),
-      dataService.getEmailTemplates(),
-      dataService.getEmailLogs(),
-    ]);
-    setParticipants(participantsData);
-    setConfig(configData);
-    setDietaryInput(configData.dietaryOptions.join(', '));
-    setProgramInput(configData.program || '');
-    setTemplates(templatesData);
-    setEmailLogs(logsData);
+    try {
+      const [participantsData, configData, templatesData, logsData] = await Promise.all([
+        dataService.getAll(),
+        dataService.getConfig(),
+        dataService.getEmailTemplates(),
+        dataService.getEmailLogs(),
+      ]);
+      setParticipants(participantsData);
+      setConfig(configData);
+      setDietaryInput(configData.dietaryOptions.join(', '));
+      setProgramInput(configData.program || '');
+      setTemplates(templatesData);
+      setEmailLogs(logsData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      console.error('Full error details:', JSON.stringify(error, null, 2));
+      // Set empty data to prevent undefined errors
+      setParticipants([]);
+      setConfig(null);
+      setTemplates([]);
+      setEmailLogs([]);
+    }
   }, []);
 
   useEffect(() => {
@@ -358,7 +368,7 @@ export const AdminPage: React.FC = () => {
       alert('Keine Empfänger ausgewählt.');
       return;
     }
-    if (!confirm(`Wirklich an ${targets.length} Empfänger senden? (Dies ist eine Simulation)`))
+    if (!confirm(`Wirklich an ${targets.length} Empfänger senden?`))
       return;
 
     setIsSending(true);
