@@ -1,0 +1,214 @@
+---
+description: Core standards for AI-assisted development
+globs: ["**/*"]
+alwaysActive: true
+---
+
+# Core Standards
+
+## Timestamp Handling
+
+- ALWAYS use ISO 8601 format for timestamps: `YYYY-MM-DDTHH:mm:ss.sssZ`
+- Use `new Date().toISOString()` in JavaScript/TypeScript
+- Store dates in UTC, convert to local time for display only
+- Include timezone information when relevant
+
+## Memory Bank Integration
+
+### When to Update Memory Bank
+
+- **Before starting work**: Review `memory-bank/active-context.md` and `memory-bank/backlog.md`
+- **During work**: Update `memory-bank/active-context.md` with current task
+- **After completing work**: Update `memory-bank/progress.md` with completed items
+- **When learning patterns**: Update `memory-bank/system-patterns.md` with new architectural insights
+
+### How to Update Memory Bank
+
+1. Read the relevant memory bank file first
+2. Make targeted updates (don't rewrite entire files)
+3. Maintain consistent formatting
+4. Keep timestamps current
+5. Link to GitHub issues and PRs when applicable
+
+## Commit Message Conventions
+
+### Format
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+### Types
+
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation only
+- `style`: Formatting, missing semicolons, etc.
+- `refactor`: Code change that neither fixes a bug nor adds a feature
+- `perf`: Performance improvement
+- `test`: Adding missing tests
+- `chore`: Build process or auxiliary tool changes
+
+### GitHub Issue Linking
+
+ALWAYS link commits to issues when applicable:
+
+```
+feat(auth): add user login flow (#42)
+
+Implements user authentication with email and password.
+
+- Add login form component
+- Add authentication API route
+- Add session management
+
+Closes #42
+```
+
+### Breaking Changes
+
+If introducing breaking changes, include `BREAKING CHANGE:` in the footer:
+
+```
+feat(api): change authentication response format
+
+BREAKING CHANGE: The authentication endpoint now returns user object directly instead of wrapped in data property
+```
+
+## Quality Gate Requirements
+
+### Before Committing
+
+1. **Format Code**: Run formatter (Prettier or equivalent)
+2. **Lint Code**: Fix all linting errors
+3. **Type Check**: Ensure no TypeScript errors
+4. **Run Tests**: All tests must pass
+5. **Review Changes**: Manually review the diff
+
+### Quality Check Command
+
+Use the project's quality check command: `npm run lint && npm run type-check`
+
+This typically runs:
+- Code formatting
+- Linting with auto-fix
+- Type checking
+- Test suite
+
+### When Quality Checks Fail
+
+1. Read the error messages carefully
+2. Fix errors one at a time
+3. Re-run quality checks after each fix
+4. If stuck, search codebase for similar patterns using GitHub MCP
+5. Consult documentation or memory bank for guidance
+
+## Code Organization
+
+### File Naming
+
+- Use kebab-case for file names: `user-profile.tsx`, `api-client.ts`
+- Component files: PascalCase or match component name: `UserProfile.tsx`
+- Utility files: descriptive names: `date-utils.ts`, `format-currency.ts`
+
+### Import Organization
+
+```typescript
+// 1. Node.js built-ins
+import { readFile } from 'fs/promises';
+
+// 2. External dependencies
+import React from 'react';
+import { z } from 'zod';
+
+// 3. Internal modules (absolute imports)
+import { Button } from '@/components/Button';
+import { formatDate } from '@/lib/utils';
+
+// 4. Relative imports
+import { UserCard } from './UserCard';
+```
+
+### Export Patterns
+
+- Prefer named exports over default exports
+- Export types and interfaces separately
+- Use barrel exports (`index.ts`) sparingly
+
+## Error Handling
+
+### Always Handle Errors
+
+```typescript
+try {
+  const result = await riskyOperation();
+  return result;
+} catch (error) {
+  // Log error with context
+  console.error('Failed to perform operation:', error);
+  
+  // Return user-friendly error or throw
+  throw new Error('Operation failed. Please try again.');
+}
+```
+
+### API Error Responses
+
+```typescript
+return Response.json(
+  { error: 'User not found', code: 'USER_NOT_FOUND' },
+  { status: 404 }
+);
+```
+
+## Documentation
+
+### Code Comments
+
+- Write comments for "why", not "what"
+- Document complex algorithms
+- Explain non-obvious business logic
+- Keep comments up to date
+
+### Function Documentation
+
+```typescript
+/**
+ * Fetches user profile from the database and formats for display.
+ * 
+ * @param userId - The unique identifier for the user
+ * @returns Formatted user profile or null if not found
+ * @throws {DatabaseError} If database connection fails
+ */
+async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  // Implementation
+}
+```
+
+## AI Collaboration
+
+### When Asking for Help
+
+1. Provide context from memory bank
+2. Share relevant code snippets
+3. Describe what you've already tried
+4. Include error messages if applicable
+
+### When Implementing Features
+
+1. Review memory bank for existing patterns
+2. Search codebase for similar implementations
+3. Follow established conventions
+4. Update memory bank with new patterns
+
+### When Debugging
+
+1. Read error messages completely
+2. Check recent changes in `memory-bank/progress.md`
+3. Review `memory-bank/system-patterns.md` for known issues
+4. Use GitHub MCP to search for similar bugs/fixes
+5. Check Vercel deployment logs if deploy-related

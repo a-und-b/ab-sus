@@ -1,0 +1,566 @@
+---
+description: Next.js App Router patterns and best practices
+globs: ["app/**/*", "src/app/**/*", "components/**/*", "src/components/**/*"]
+---
+
+# Next.js Patterns (App Router)
+
+Version: latest
+Router: App Router
+
+## Server vs Client Components
+
+### Default to Server Components
+
+Server Components are the default. Use them unless you need:
+- Event handlers (`onClick`, `onChange`)
+- React hooks (`useState`, `useEffect`)
+- Browser APIs (`window`, `localStorage`)
+- Third-party libraries that use client-only features
+
+### Server Component Example
+
+```typescript
+// app/users/page.tsx
+// This is a Server Component (default)
+export default async function UsersPage() {
+  // Can fetch data directly
+  const users = await db.user.findMany();
+  
+  return (
+    <div>
+      <h1>Users</h1>
+      {users.map(user => (
+        <UserCard key={user.id} user={user} />
+      ))}
+    </div>
+  );
+}
+```
+
+### Client Component Example
+
+```typescript
+'use client';
+
+// Mark as Client Component when needed
+import { useState } from 'react';
+
+export function SearchBar() {
+  const [query, setQuery] = useState('');
+  
+  return (
+    <input
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+      placeholder="Search..."
+    />
+  );
+}
+```
+
+### Composition Pattern
+
+Keep Client Components small and nested:
+
+```typescript
+// app/page.tsx (Server Component)
+import { SearchResults } from './SearchResults'; // Server
+import { SearchBar } from './SearchBar'; // Client
+
+export default async function Page() {
+  return (
+    <div>
+      <h1>Search</h1>
+      <SearchBar /> {/* Client boundary */}
+      <SearchResults /> {/* Still server */}
+    </div>
+  );
+}
+```
+
+## Data Fetching
+
+### Server Components (Recommended)
+
+```typescript
+// Direct data fetching in Server Components
+async function getData() {
+  const res = await fetch('https://api.example.com/data', {
+    next: { revalidate: 3600 } // Cache for 1 hour
+  });
+  
+  if (!res.ok) throw new Error('Failed to fetch');
+  return res.json();
+}
+
+export default async function Page() {
+  const data = await getData();
+  return <div>{data.content}</div>;
+}
+```
+
+### Parallel Data Fetching
+
+```typescript
+async function Page() {
+  // Fetch in parallel
+  const [users, posts] = await Promise.all([
+    fetchUsers(),
+    fetchPosts(),
+  ]);
+  
+  return (
+    <>
+      <Users data={users} />
+      <Posts data={posts} />
+    </>
+  );
+}
+```
+
+### Sequential Data Fetching (When Needed)
+
+```typescript
+async function Page({ params }: { params: { id: string } }) {
+  // First fetch
+  const user = await fetchUser(params.id);
+  
+  // Second fetch depends on first
+  const posts = await fetchUserPosts(user.id);
+  
+  return <UserProfile user={user} posts={posts} />;
+}
+```
+
+## Caching Strategies
+
+### Fetch Cache Options
+
+```typescript
+// Cache indefinitely (default for static data)
+fetch(url, { cache: 'force-cache' });
+
+// Never cache (always fresh)
+fetch(url, { cache: 'no-store' });
+
+// Revalidate after time period
+fetch(url, { next: { revalidate: 60 } }); // 60 seconds
+```
+
+### Route Segment Config
+
+```typescript
+// app/dashboard/page.tsx
+export const dynamic = 'force-dynamic'; // Always dynamic
+export const revalidate = 3600; // Revalidate every hour
+
+export default async function Dashboard() {
+  // ...
+}
+```
+
+### unstable_cache for Database Queries
+
+```typescript
+import { unstable_cache } from 'next/cache';
+
+const getCachedPosts = unstable_cache(
+  async () => db.post.findMany(),
+  ['posts'],
+  { revalidate: 3600, tags: ['posts'] }
+);
+```
+
+## Routing Patterns
+
+### File-Based Routing
+
+```
+app/
+├── page.tsx              → /
+├── about/
+│   └── page.tsx         → /about
+├── blog/
+│   ├── page.tsx         → /blog
+│   └── [slug]/
+│       └── page.tsx     → /blog/:slug
+└── dashboard/
+    ├── layout.tsx       → Shared layout
+    ├── page.tsx         → /dashboard
+    └── settings/
+        └── page.tsx     → /dashboard/settings
+```
+
+### Dynamic Routes
+
+```typescript
+// app/blog/[slug]/page.tsx
+export default function BlogPost({
+  params
+}: {
+  params: { slug: string }
+}) {
+  return <h1>Post: {params.slug}</h1>;
+}
+
+// Generate static paths at build time
+export async function generateStaticParams() {
+  const posts = await getPosts();
+  return posts.map((post) => ({
+    slug: post.slug,
+  }));
+}
+```
+
+### Catch-All Routes
+
+```typescript
+// app/shop/[...slug]/page.tsx
+// Matches /shop/a, /shop/a/b, /shop/a/b/c, etc.
+export default function ShopPage({
+  params
+}: {
+  params: { slug: string[] }
+}) {
+  return <div>{params.slug.join(' / ')}</div>;
+}
+```
+
+### Parallel Routes
+
+```typescript
+// app/dashboard/@analytics/page.tsx
+// app/dashboard/@team/page.tsx
+// app/dashboard/layout.tsx
+
+export default function Layout({
+  children,
+  analytics,
+  team,
+}: {
+  children: React.ReactNode;
+  analytics: React.ReactNode;
+  team: React.ReactNode;
+}) {
+  return (
+    <>
+      {children}
+      {analytics}
+      {team}
+    </>
+  );
+}
+```
+
+### Intercepting Routes
+
+```typescript
+// app/photos/[id]/page.tsx → Full page
+// app/@modal/(.)photos/[id]/page.tsx → Modal overlay
+
+// Useful for modal workflows
+```
+
+## API Routes
+
+### Route Handlers
+
+```typescript
+// app/api/users/route.ts
+export async function GET(request: Request) {
+  const users = await db.user.findMany();
+  return Response.json(users);
+}
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  const user = await db.user.create({ data: body });
+  return Response.json(user, { status: 201 });
+}
+```
+
+### Dynamic API Routes
+
+```typescript
+// app/api/users/[id]/route.ts
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  const user = await db.user.findUnique({
+    where: { id: params.id }
+  });
+  
+  if (!user) {
+    return Response.json(
+      { error: 'User not found' },
+      { status: 404 }
+    );
+  }
+  
+  return Response.json(user);
+}
+```
+
+### Server Actions (Recommended for Mutations)
+
+```typescript
+// app/actions.ts
+'use server';
+
+export async function createUser(formData: FormData) {
+  const name = formData.get('name') as string;
+  const email = formData.get('email') as string;
+  
+  const user = await db.user.create({
+    data: { name, email }
+  });
+  
+  revalidatePath('/users');
+  return { success: true, user };
+}
+
+// app/users/new/page.tsx
+import { createUser } from '../actions';
+
+export default function NewUser() {
+  return (
+    <form action={createUser}>
+      <input name="name" required />
+      <input name="email" type="email" required />
+      <button type="submit">Create User</button>
+    </form>
+  );
+}
+```
+
+## Loading and Error States
+
+### Loading UI
+
+```typescript
+// app/dashboard/loading.tsx
+export default function Loading() {
+  return <div>Loading dashboard...</div>;
+}
+
+// Or with Suspense
+import { Suspense } from 'react';
+
+export default function Page() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <SlowComponent />
+    </Suspense>
+  );
+}
+```
+
+### Error Handling
+
+```typescript
+// app/dashboard/error.tsx
+'use client';
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return (
+    <div>
+      <h2>Something went wrong!</h2>
+      <p>{error.message}</p>
+      <button onClick={reset}>Try again</button>
+    </div>
+  );
+}
+```
+
+### Not Found
+
+```typescript
+// app/dashboard/not-found.tsx
+export default function NotFound() {
+  return (
+    <div>
+      <h2>Page Not Found</h2>
+      <p>Could not find the requested resource</p>
+    </div>
+  );
+}
+
+// Trigger programmatically
+import { notFound } from 'next/navigation';
+
+export default async function Page({ params }) {
+  const user = await fetchUser(params.id);
+  if (!user) notFound();
+  return <div>{user.name}</div>;
+}
+```
+
+## Metadata and SEO
+
+### Static Metadata
+
+```typescript
+// app/about/page.tsx
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'About Us',
+  description: 'Learn more about our company',
+};
+
+export default function About() {
+  return <div>About</div>;
+}
+```
+
+### Dynamic Metadata
+
+```typescript
+// app/blog/[slug]/page.tsx
+export async function generateMetadata({
+  params
+}: {
+  params: { slug: string }
+}): Promise<Metadata> {
+  const post = await getPost(params.slug);
+  
+  return {
+    title: post.title,
+    description: post.excerpt,
+    openGraph: {
+      title: post.title,
+      description: post.excerpt,
+      images: [post.coverImage],
+    },
+  };
+}
+```
+
+## Image Optimization
+
+### next/image Component
+
+```typescript
+import Image from 'next/image';
+
+// Remote images
+<Image
+  src="https://example.com/image.jpg"
+  alt="Description"
+  width={800}
+  height={600}
+  priority // Above fold
+/>
+
+// Local images
+import profilePic from '@/public/profile.jpg';
+
+<Image
+  src={profilePic}
+  alt="Profile"
+  placeholder="blur" // Automatic blur placeholder
+/>
+
+// Fill container
+<div style={{ position: 'relative', width: '100%', height: '400px' }}>
+  <Image
+    src="/hero.jpg"
+    alt="Hero"
+    fill
+    style={{ objectFit: 'cover' }}
+  />
+</div>
+```
+
+## Middleware
+
+```typescript
+// middleware.ts (root level)
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(request: NextRequest) {
+  // Authentication check
+  const token = request.cookies.get('token');
+  
+  if (!token) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+  
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: '/dashboard/:path*',
+};
+```
+
+## Environment Variables
+
+```typescript
+// Access in Server Components or API Routes
+const apiKey = process.env.API_KEY;
+
+// For client-side, prefix with NEXT_PUBLIC_
+const publicKey = process.env.NEXT_PUBLIC_STRIPE_KEY;
+
+// .env.local (gitignored)
+API_KEY=secret_key_here
+NEXT_PUBLIC_STRIPE_KEY=pk_test_123
+```
+
+## Performance Best Practices
+
+1. **Use Server Components** by default
+2. **Minimize Client Components** - Keep them small and specific
+3. **Optimize Images** - Always use next/image
+4. **Implement Caching** - Use appropriate cache strategies
+5. **Stream with Suspense** - Show content progressively
+6. **Parallel Data Fetching** - Fetch data concurrently when possible
+7. **Code Splitting** - Use dynamic imports for heavy components
+
+```typescript
+// Dynamic import for heavy component
+import dynamic from 'next/dynamic';
+
+const Chart = dynamic(() => import('@/components/Chart'), {
+  loading: () => <p>Loading chart...</p>,
+  ssr: false, // Skip server-side rendering if needed
+});
+```
+
+## Type Safety
+
+### Typed Params and SearchParams
+
+```typescript
+type PageProps = {
+  params: { id: string };
+  searchParams: { sort?: string; filter?: string };
+};
+
+export default function Page({ params, searchParams }: PageProps) {
+  // Fully typed
+}
+```
+
+### Route Handler Types
+
+```typescript
+import { NextRequest } from 'next/server';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  // Typed params
+}
+```

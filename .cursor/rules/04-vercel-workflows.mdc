@@ -1,0 +1,470 @@
+---
+description: Vercel MCP integration workflows
+globs: ["**/*"]
+alwaysActive: true
+---
+
+# Vercel Workflows
+
+Vercel Project: `your-project-id`
+Vercel Team: `your-team-id`
+MCP: Vercel (Pre-configured and available)
+
+## When to Use Vercel MCP
+
+### Before Deploying
+- Check latest deployment status
+- Verify environment variables are set
+- Review recent deployment history
+
+### After Pushing Code
+- Monitor deployment progress
+- Check build logs if deployment fails
+- Access preview deployment URL
+
+### When Debugging
+- Fetch build logs for failed deployments
+- Check deployment configuration
+- Verify environment variable values
+
+## Deployment Monitoring
+
+### List Recent Deployments
+
+```typescript
+// Get 5 most recent deployments
+mcp_vercel_list_deployments({
+  projectId: 'your-project-id',
+  teamId: 'your-team-id',
+  limit: 5
+})
+
+// Response includes:
+// - Deployment URL
+// - Status (READY, ERROR, BUILDING, etc.)
+// - Branch name
+// - Commit SHA
+// - Created time
+// - Creator
+```
+
+### Get Specific Deployment
+
+```typescript
+// Get details for a specific deployment
+mcp_vercel_get_deployment({
+  idOrUrl: 'deployment-id-or-url',
+  teamId: 'your-team-id'
+})
+
+// Returns:
+// - Full deployment status
+// - Build duration
+// - All metadata
+// - Error information if failed
+```
+
+### Check Deployment After Push
+
+Wait ~30 seconds after pushing to allow Vercel webhook to trigger, then:
+
+```typescript
+// Get latest deployment
+const deployments = await mcp_vercel_list_deployments({
+  projectId: 'your-project-id',
+  teamId: 'your-team-id',
+  limit: 1
+});
+
+const latest = deployments[0];
+
+if (latest.state === 'READY') {
+  // ✅ Deployment successful
+  console.log(`✅ Deployed to: ${latest.url}`);
+} else if (latest.state === 'ERROR') {
+  // ❌ Deployment failed
+  console.log('❌ Deployment failed - checking logs...');
+  // Fetch logs (see below)
+} else {
+  // ⏳ Still building
+  console.log('⏳ Deployment in progress...');
+}
+```
+
+## Build Log Debugging
+
+### Fetching Build Logs
+
+When a deployment fails, fetch logs to diagnose:
+
+```typescript
+mcp_vercel_get_deployment_build_logs({
+  idOrUrl: 'deployment-id-or-url',
+  teamId: 'your-team-id',
+  limit: 100 // Number of log lines
+})
+```
+
+### Common Build Errors
+
+**TypeScript Errors**:
+```
+Type error: Property 'name' does not exist on type 'User'
+```
+Fix: Add missing type or fix type definition
+
+**Missing Dependencies**:
+```
+Module not found: Can't resolve 'some-package'
+```
+Fix: Run `npm install some-package` and commit package.json
+
+**Environment Variables**:
+```
+Error: API_KEY is not defined
+```
+Fix: Add environment variable in Vercel dashboard
+
+**Build Command Failures**:
+```
+npm ERR! code ELIFECYCLE
+npm ERR! errno 1
+```
+Fix: Run build locally to reproduce and fix the error
+
+**Next.js Specific Errors**:
+```
+Error: Page /api/users not found
+```
+Fix: Check file structure and routing
+
+### Analyzing Logs Systematically
+
+1. **Find the Error**: Look for `Error:` or `ERR!` in logs
+2. **Identify Context**: Read surrounding lines for context
+3. **Determine Cause**: TypeScript? Dependencies? Environment?
+4. **Search Documentation**: Use `mcp_vercel_search_vercel_documentation`
+5. **Fix Locally**: Reproduce and fix in development
+6. **Test Build**: Run `npm run build` locally
+7. **Push Fix**: Commit and push the fix
+8. **Monitor**: Check new deployment status
+
+## Environment Variables
+
+### Checking Environment Variables
+
+Environment variables should be set in Vercel dashboard, but you can verify deployment configuration:
+
+```typescript
+// Get project details (includes env var names, not values)
+mcp_vercel_get_project({
+  projectId: 'your-project-id',
+  teamId: 'your-team-id'
+})
+```
+
+### Environment Variable Best Practices
+
+1. **Never commit secrets** to repository
+2. **Use NEXT_PUBLIC_** prefix for client-side variables
+3. **Set in Vercel dashboard** for each environment (Production, Preview, Development)
+4. **Document required variables** in README or .env.example
+5. **Validate on build** - fail early if missing
+
+Example .env.example:
+```bash
+# Database
+DATABASE_URL=postgresql://...
+
+# Authentication
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=
+
+# External APIs
+API_KEY=
+NEXT_PUBLIC_API_URL=
+```
+
+## Project Information
+
+### Getting Project Details
+
+```typescript
+mcp_vercel_get_project({
+  projectId: 'your-project-id',
+  teamId: 'your-team-id'
+})
+
+// Returns:
+// - Project name
+// - Framework (Next.js)
+// - Build settings
+// - Environment variables (names only)
+// - Git repository info
+// - Domain settings
+```
+
+### Listing Projects
+
+```typescript
+// List all projects in team
+mcp_vercel_list_projects({
+  teamId: 'your-team-id'
+})
+```
+
+## Accessing Deployments
+
+### Preview Deployments
+
+For protected deployments (authentication enabled):
+
+```typescript
+// Get shareable access URL
+mcp_vercel_get_access_to_vercel_url({
+  url: 'https://myapp-abc123.vercel.app'
+})
+
+// Returns shareable URL with authentication bypass token
+// Valid for 23 hours
+```
+
+### Fetching Deployment Content
+
+```typescript
+// Fetch deployment URL content
+mcp_vercel_web_fetch_vercel_url({
+  url: 'https://myapp-abc123.vercel.app/api/health'
+})
+
+// Automatically handles authentication
+// Returns page content
+```
+
+## Documentation Search
+
+### Searching Vercel Docs
+
+When uncertain about Next.js or Vercel features:
+
+```typescript
+mcp_vercel_search_vercel_documentation({
+  topic: 'environment variables',
+  tokens: 2500 // Max tokens to return
+})
+
+// Search for specific topics:
+// - "routing"
+// - "middleware"
+// - "edge functions"
+// - "image optimization"
+// - "caching"
+// - "deployment"
+```
+
+### When to Search Documentation
+
+- **Implementing new feature**: Check best practices
+- **Build fails**: Search error message
+- **Performance issues**: Find optimization guides
+- **Configuration**: Verify correct settings
+- **API usage**: Check API documentation
+
+## Deployment Workflows
+
+### Pre-Deploy Checks
+
+Before pushing to trigger deployment:
+
+1. **Run build locally**: `npm run build`
+2. **Run quality checks**: `npm run quality-check`
+3. **Test locally**: `npm run dev` and manual testing
+4. **Check environment variables**: Verify all required vars are set in Vercel
+5. **Review changes**: Ensure changes are intentional
+
+### Post-Deploy Verification
+
+After pushing code:
+
+1. **Wait for webhook**: Give Vercel 30 seconds to trigger
+2. **Check deployment status**: Use `mcp_vercel_list_deployments`
+3. **If successful**:
+   - Access preview URL
+   - Test the deployed changes
+   - Update GitHub issue
+   - Update `memory-bank/deployment-status.md`
+4. **If failed**:
+   - Fetch build logs
+   - Analyze errors
+   - Fix issues
+   - Push fix
+   - Monitor new deployment
+
+### Production Deployments
+
+When merging to main/production branch:
+
+1. **Extra caution**: Double-check changes
+2. **Monitor closely**: Watch build progress
+3. **Test production**: Verify functionality in production
+4. **Rollback if needed**: Use Vercel dashboard to rollback
+5. **Update memory bank**: Document production deployment
+
+## Memory Bank Integration
+
+### Update deployment-status.md
+
+After checking deployments, update memory bank:
+
+```markdown
+# Deployment Status
+
+Last Updated: 2025-01-15T10:30:00Z
+
+## Production
+- URL: https://myapp.com
+- Status: ✅ READY
+- Last Deployed: 2025-01-15T09:00:00Z
+- Branch: main
+- Commit: abc123 - feat: add user authentication
+
+## Latest Preview
+- URL: https://myapp-git-feature-42.vercel.app
+- Status: ✅ READY
+- Last Deployed: 2025-01-15T10:15:00Z
+- Branch: feature/42-user-authentication
+- Commit: def456 - feat: add login form
+
+## Recent Deployments
+1. ✅ feature/42-user-authentication (10:15 AM) - Success
+2. ✅ main (9:00 AM) - Success
+3. ❌ feature/41-api-update (8:30 AM) - Failed: TypeScript errors
+
+## Environment Variables
+- DATABASE_URL ✅
+- NEXTAUTH_SECRET ✅
+- NEXTAUTH_URL ✅
+- API_KEY ✅
+- NEXT_PUBLIC_API_URL ✅
+```
+
+## Workflow Integration
+
+### @check-deployment Command
+
+Check current deployment status:
+1. List recent deployments (5 most recent)
+2. Get latest deployment details
+3. If failed, fetch and analyze build logs
+4. Update `memory-bank/deployment-status.md`
+5. Report status to user
+
+### @debug-build Command
+
+Debug failed deployment:
+1. List deployments, filter by ERROR/FAILED
+2. Fetch build logs for failed deployment
+3. Analyze error patterns
+4. Search Vercel documentation for errors
+5. Suggest specific fixes
+6. Guide user through fixing and redeploying
+
+### @wrapup Integration
+
+After completing work:
+1. Push changes to GitHub
+2. Wait 30s for Vercel webhook
+3. Check deployment status
+4. If failed, fetch logs and report
+5. If successful, include preview URL in summary
+6. Update memory bank with deployment info
+
+## Common Deployment Scenarios
+
+### Scenario 1: TypeScript Error
+
+```
+Build Error:
+Type error: Property 'email' does not exist on type 'User'
+
+Solution:
+1. Check type definitions in types/ folder
+2. Add missing property to User type
+3. Or fix code to use correct property
+4. Run `npm run type-check` locally
+5. Commit fix and push
+```
+
+### Scenario 2: Missing Dependency
+
+```
+Build Error:
+Module not found: Can't resolve '@/lib/utils'
+
+Solution:
+1. Check if file exists at expected path
+2. Verify import path is correct
+3. Check tsconfig.json paths configuration
+4. Run `npm run build` locally to reproduce
+5. Fix import path or file location
+6. Commit and push
+```
+
+### Scenario 3: Environment Variable Missing
+
+```
+Build Error:
+Error: DATABASE_URL is not defined
+
+Solution:
+1. Go to Vercel dashboard → Project → Settings → Environment Variables
+2. Add missing environment variable
+3. Set for appropriate environments (Production/Preview/Development)
+4. Redeploy (Vercel auto-redeploys after env var changes)
+```
+
+### Scenario 4: Build Timeout
+
+```
+Build Error:
+Error: Command timed out after 15 minutes
+
+Solution:
+1. Optimize build process
+2. Remove unnecessary dependencies
+3. Use Next.js caching features
+4. Check for infinite loops in build scripts
+5. Consider upgrading Vercel plan if needed
+```
+
+## Best Practices
+
+1. **Check Before Pushing**: Run local build to catch errors early
+2. **Monitor After Pushing**: Always check deployment status
+3. **Debug Systematically**: Use logs to find root cause
+4. **Search Documentation**: Leverage Vercel docs for solutions
+5. **Update Memory Bank**: Keep deployment status current
+6. **Test Deployments**: Access preview URLs and test changes
+7. **Rollback When Needed**: Use Vercel dashboard for quick rollbacks
+8. **Set Environment Variables Properly**: Use Vercel dashboard, not code
+9. **Use Preview Deployments**: Test on preview before merging to production
+10. **Document Issues**: Update memory bank with deployment learnings
+
+## Error Handling
+
+When Vercel MCP operations fail:
+1. Check if project ID and team ID are correct
+2. Verify MCP is properly configured
+3. Check internet connectivity
+4. Retry the operation
+5. Fall back to Vercel dashboard if needed
+6. Document the issue for troubleshooting
+
+## Performance Monitoring
+
+After successful deployment:
+1. Check Core Web Vitals in Vercel dashboard
+2. Monitor error rates
+3. Review usage metrics
+4. Check for performance regressions
+5. Update `memory-bank/system-patterns.md` with performance insights

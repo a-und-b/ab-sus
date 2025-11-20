@@ -1,0 +1,275 @@
+---
+description: Quality gates and testing standards
+globs: ["**/*"]
+alwaysActive: true
+---
+
+# Quality Gates
+
+## Pre-Commit Quality Checks
+
+ALWAYS run quality checks before committing code.
+
+### Quality Command
+
+```bash
+npm run lint && npm run type-check
+```
+
+This command typically includes:
+1. **Formatting**: Prettier or similar
+2. **Linting**: ESLint with auto-fix
+3. **Type Checking**: TypeScript compiler
+4. **Tests**: Jest, Vitest, or Playwright
+
+### Individual Commands
+
+If the project has granular scripts:
+
+```bash
+# Format code
+prettier --write .
+
+# Lint code
+eslint --fix .
+
+# Type check
+tsc --noEmit
+
+# Run tests
+npm test
+```
+
+## Linting Standards
+
+### ESLint Configuration
+
+- Fix all errors before committing
+- Address warnings when possible
+- Use `// eslint-disable-next-line` sparingly with explanation
+- Never disable rules globally without team discussion
+
+### Common Issues
+
+**Unused Variables**:
+```typescript
+// ❌ Bad
+const result = fetchData();
+
+// ✅ Good - use it
+const result = fetchData();
+console.log(result);
+
+// ✅ Good - prefix with underscore if intentionally unused
+const _result = fetchData();
+```
+
+**Missing Dependencies**:
+```typescript
+// ❌ Bad - missing dependency
+useEffect(() => {
+  fetchData(userId);
+}, []);
+
+// ✅ Good
+useEffect(() => {
+  fetchData(userId);
+}, [userId]);
+```
+
+## Type Safety
+
+### TypeScript Strict Mode
+
+Project uses TypeScript strict mode. Follow these patterns:
+
+**No Implicit Any**:
+```typescript
+// ❌ Bad
+function process(data) {
+  return data.value;
+}
+
+// ✅ Good
+function process(data: { value: string }): string {
+  return data.value;
+}
+```
+
+**Null Checks**:
+```typescript
+// ❌ Bad
+function getName(user: User | null): string {
+  return user.name;
+}
+
+// ✅ Good
+function getName(user: User | null): string {
+  return user?.name ?? 'Unknown';
+}
+```
+
+**Type Assertions**:
+```typescript
+// ❌ Bad - avoid as any
+const data = response as any;
+
+// ✅ Good - use proper types
+const data = response as ApiResponse;
+
+// ✅ Better - validate at runtime
+const data = ApiResponseSchema.parse(response);
+```
+
+## Testing Requirements
+
+### Test Coverage
+
+- Write tests for new features
+- Update tests when modifying existing features
+- Aim for meaningful coverage, not just numbers
+- Test edge cases and error conditions
+
+### Test Structure
+
+```typescript
+describe('UserProfile', () => {
+  it('should display user name', () => {
+    // Arrange
+    const user = { name: 'John Doe', email: 'john@example.com' };
+    
+    // Act
+    render(<UserProfile user={user} />);
+    
+    // Assert
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+  });
+
+  it('should handle missing user gracefully', () => {
+    render(<UserProfile user={null} />);
+    expect(screen.getByText('No user data')).toBeInTheDocument();
+  });
+});
+```
+
+### When Tests Fail
+
+1. Read the test failure message completely
+2. Check if the test expectations are still valid
+3. If feature changed, update the test
+4. If test is valid, fix the implementation
+5. Never skip or disable tests to make them pass
+
+## Code Review Checklist
+
+Before considering work complete:
+
+- [ ] All quality checks pass
+- [ ] Code is properly formatted
+- [ ] No linting errors
+- [ ] No TypeScript errors
+- [ ] Tests pass
+- [ ] New features have tests
+- [ ] Documentation is updated
+- [ ] Commit messages follow conventions
+- [ ] Memory bank is updated
+- [ ] GitHub issues are linked
+
+## Performance Considerations
+
+### Next.js Specific
+
+- Use appropriate component types (Server vs Client)
+- Optimize images with next/image
+- Implement proper caching strategies
+- Minimize client-side JavaScript
+- Use streaming and suspense where appropriate
+
+### General Performance
+
+- Avoid unnecessary re-renders
+- Memoize expensive computations
+- Lazy load heavy components
+- Optimize bundle size
+- Monitor Core Web Vitals
+
+## Accessibility Standards
+
+### Basic Requirements
+
+- Use semantic HTML
+- Include alt text for images
+- Ensure keyboard navigation works
+- Maintain sufficient color contrast
+- Label form inputs properly
+
+### ARIA When Needed
+
+```typescript
+<button
+  aria-label="Close dialog"
+  onClick={onClose}
+>
+  <CloseIcon />
+</button>
+```
+
+## Security Standards
+
+### Never Commit Secrets
+
+- Use environment variables for sensitive data
+- Never hardcode API keys, passwords, or tokens
+- Check .env files are in .gitignore
+- Use secrets management for production
+
+### Input Validation
+
+```typescript
+// ✅ Validate user input
+const EmailSchema = z.string().email();
+const email = EmailSchema.parse(userInput);
+
+// ✅ Sanitize for database
+const safeContent = sanitizeHtml(userContent);
+```
+
+### API Security
+
+- Validate request bodies
+- Check authentication
+- Implement rate limiting
+- Use HTTPS only
+- Set secure headers
+
+## When Quality Checks Fail
+
+### Systematic Debugging Approach
+
+1. **Read Error Message**: Understand what failed
+2. **Isolate the Issue**: Which command failed?
+3. **Fix One at a Time**: Don't try to fix everything at once
+4. **Re-run After Each Fix**: Confirm the fix worked
+5. **Search for Solutions**: Use GitHub MCP to find similar issues
+
+### Common Fixes
+
+**Formatting Issues**:
+```bash
+prettier --write .
+```
+
+**Linting Issues**:
+```bash
+eslint --fix . --fix
+```
+
+**Type Errors**:
+- Add missing type annotations
+- Import missing types
+- Fix incorrect type usage
+
+**Test Failures**:
+- Update test expectations if feature changed
+- Fix implementation if test is correct
+- Check for flaky tests (timing issues)

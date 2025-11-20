@@ -1,0 +1,454 @@
+---
+description: GitHub MCP integration workflows
+globs: ["**/*"]
+alwaysActive: true
+---
+
+# GitHub Workflows
+
+GitHub Repository: `a-und-b/ab-sus`
+MCP: GitHub (Pre-configured and available)
+
+## When to Use GitHub MCP
+
+### Before Starting Work
+- Fetch assigned issues: `mcp_github_list_issues`
+- Review existing issues related to current task
+- Check for similar implementations: `mcp_github_search_code`
+
+### During Work
+- Update issue with progress: `mcp_github_add_issue_comment`
+- Search for existing patterns: `mcp_github_search_code`
+- Check related PRs: `mcp_github_list_pull_requests`
+
+### After Completing Work
+- Update issue status: `mcp_github_update_issue`
+- Close completed issues: `mcp_github_update_issue` (state: closed)
+- Create pull request: `mcp_github_create_pull_request`
+
+## Issue Management
+
+### Listing Issues
+
+```typescript
+// Get my assigned open issues
+mcp_github_list_issues({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  state: 'open',
+  assignee: '@me'
+})
+
+// Get all open issues sorted by update time
+mcp_github_list_issues({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  state: 'open',
+  sort: 'updated',
+  direction: 'desc'
+})
+
+// Filter by labels
+mcp_github_list_issues({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  labels: ['bug', 'high-priority']
+})
+```
+
+### Creating Issues
+
+```typescript
+mcp_github_create_issue({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  title: 'Add user authentication',
+  body: `## Description
+Implement user authentication with email and password.
+
+## Acceptance Criteria
+- [ ] User can register with email/password
+- [ ] User can login
+- [ ] User can logout
+- [ ] Session persists across page refreshes
+
+## Technical Notes
+- Use NextAuth.js for authentication
+- Store sessions in database
+`,
+  labels: ['feature', 'authentication'],
+  assignees: ['@me']
+})
+```
+
+### Updating Issues
+
+```typescript
+// Add progress comment
+mcp_github_add_issue_comment({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  issue_number: 42,
+  body: 'Completed user registration form. Now working on authentication API.'
+})
+
+// Update issue status
+mcp_github_update_issue({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  issue_number: 42,
+  state: 'closed', // or 'open'
+  labels: ['feature', 'completed']
+})
+
+// Change assignee or labels
+mcp_github_update_issue({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  issue_number: 42,
+  labels: ['in-progress'],
+  assignees: ['@me']
+})
+```
+
+## Commit Conventions
+
+### Always Link Commits to Issues
+
+```bash
+# Format: <type>(<scope>): <description> (#issue-number)
+feat(auth): add login form (#42)
+fix(ui): resolve button alignment issue (#38)
+docs: update API documentation (#45)
+```
+
+### In Commit Body
+
+```
+feat(auth): add user authentication
+
+Implements user login with email and password.
+
+- Add login form component
+- Add authentication API route
+- Add session management
+- Update navigation to show user state
+
+Related to #40
+Closes #42
+```
+
+### When to Link Issues
+
+- **Always** link to the issue you're working on
+- Use `Closes #N` or `Fixes #N` in commit body to auto-close
+- Use `Related to #N` for partial work
+- Link multiple issues if commit addresses multiple tasks
+
+## Branch Management
+
+### Creating Branches
+
+Use GitHub MCP to create feature branches:
+
+```typescript
+mcp_github_create_branch({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  branch: 'feature/42-user-authentication',
+  from_branch: 'main' // or 'develop'
+})
+```
+
+### Branch Naming Conventions
+
+- `feature/N-description` - New features (N = issue number)
+- `fix/N-description` - Bug fixes
+- `refactor/N-description` - Code refactoring
+- `docs/N-description` - Documentation updates
+- `chore/N-description` - Maintenance tasks
+
+Examples:
+- `feature/42-user-authentication`
+- `fix/38-button-alignment`
+- `refactor/45-api-client-structure`
+
+## Pull Request Workflows
+
+### Creating Pull Requests
+
+```typescript
+mcp_github_create_pull_request({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  title: 'Add user authentication',
+  head: 'feature/42-user-authentication',
+  base: 'main',
+  body: `## Description
+Implements user authentication with email and password.
+
+## Changes
+- Added login form component
+- Added authentication API route
+- Added session management
+- Updated navigation bar
+
+## Testing
+- [x] Manual testing completed
+- [x] All tests pass
+- [x] Linting passes
+- [x] Type checking passes
+
+## Screenshots
+![Login Form](link-to-screenshot)
+
+## Related Issues
+Closes #42
+Related to #40
+`,
+  draft: false
+})
+```
+
+### PR Best Practices
+
+1. **Clear Title**: Summarize the change
+2. **Detailed Description**: Explain what and why
+3. **Link Issues**: Use `Closes #N` to auto-close
+4. **Testing Checklist**: Show what was tested
+5. **Screenshots**: For UI changes
+6. **Request Reviews**: Tag relevant reviewers
+
+### Updating Pull Requests
+
+```typescript
+// Update PR after feedback
+mcp_github_update_pull_request({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  pullNumber: 45,
+  title: 'Updated: Add user authentication',
+  body: 'Updated description...'
+})
+```
+
+## Code Search
+
+### Finding Similar Implementations
+
+Before implementing a feature, search for existing patterns:
+
+```typescript
+// Search for authentication patterns
+mcp_github_search_code({
+  q: 'authentication repo:a-und-b/ab-sus',
+  page: 1,
+  perPage: 10
+})
+
+// Search for specific function usage
+mcp_github_search_code({
+  q: 'useAuth language:typescript repo:a-und-b/ab-sus'
+})
+
+// Search for error handling patterns
+mcp_github_search_code({
+  q: 'try catch fetch repo:a-und-b/ab-sus'
+})
+```
+
+### When to Search
+
+- **Before implementing**: Check if similar code exists
+- **When debugging**: Find how others handled similar issues
+- **When refactoring**: Identify all usages of a pattern
+- **Learning**: Discover existing patterns and conventions
+
+## Backlog Synchronization
+
+### Syncing Issues to Memory Bank
+
+Regularly update `memory-bank/backlog.md` from GitHub:
+
+```typescript
+// Fetch all open issues
+const issues = await mcp_github_list_issues({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  state: 'open',
+  sort: 'updated',
+  direction: 'desc'
+});
+
+// Format for memory bank:
+// ## Backlog
+//
+// ### High Priority
+// - [ ] #42: Add user authentication [feature] (@user)
+// - [ ] #38: Fix button alignment [bug] (@user)
+//
+// ### Normal Priority
+// - [ ] #45: Update API documentation [docs] (unassigned)
+```
+
+### Progress Tracking
+
+Update `memory-bank/progress.md` with closed issues:
+
+```typescript
+// Fetch recently closed issues
+const closed = await mcp_github_list_issues({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  state: 'closed',
+  sort: 'updated',
+  direction: 'desc',
+  perPage: 20
+});
+
+// Format for memory bank:
+// ## Recent Completions
+//
+// ### 2025-01-15
+// - ✅ #42: Add user authentication [PR #45]
+// - ✅ #38: Fix button alignment [PR #43]
+```
+
+## File Operations
+
+### Reading Repository Files
+
+```typescript
+// Read a specific file
+mcp_github_get_file_contents({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  path: 'src/lib/auth.ts',
+  branch: 'main' // optional
+})
+```
+
+### Updating Files via MCP
+
+```typescript
+// Create or update a file
+mcp_github_create_or_update_file({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  path: 'docs/api.md',
+  content: '# API Documentation\n...',
+  message: 'docs: update API documentation',
+  branch: 'main'
+})
+```
+
+### Pushing Multiple Files
+
+```typescript
+// Push multiple files at once
+mcp_github_push_files({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  branch: 'feature/documentation-update',
+  files: [
+    { path: 'docs/api.md', content: '...' },
+    { path: 'docs/guide.md', content: '...' }
+  ],
+  message: 'docs: update documentation'
+})
+```
+
+## Commit History
+
+### Reviewing Recent Commits
+
+```typescript
+// List commits on a branch
+mcp_github_list_commits({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  sha: 'main', // branch name
+  perPage: 20
+})
+
+// Get specific commit details
+mcp_github_get_commit({
+  owner: 'a-und-b',
+  repo: 'ab-sus',
+  sha: 'abc123...'
+})
+```
+
+## Issue Search
+
+### Finding Related Issues
+
+```typescript
+// Search issues by keyword
+mcp_github_search_issues({
+  q: 'authentication repo:a-und-b/ab-sus',
+  sort: 'updated',
+  order: 'desc'
+})
+
+// Search by labels
+mcp_github_search_issues({
+  q: 'label:bug label:high-priority repo:a-und-b/ab-sus'
+})
+
+// Search by author
+mcp_github_search_issues({
+  q: 'author:@me is:issue is:open repo:a-und-b/ab-sus'
+})
+```
+
+## Workflow Integration
+
+### @start-sprint Integration
+
+When starting a sprint:
+1. List my assigned issues
+2. OR search issues by keyword
+3. Select or create an issue
+4. Create feature branch
+5. Update `memory-bank/active-context.md` with issue link
+
+### @wrapup Integration
+
+When wrapping up work:
+1. Add comment to issue with progress
+2. Update issue labels (in-progress → completed)
+3. Close issue if fully complete
+4. Create PR linking to issue
+5. Update `memory-bank/progress.md`
+
+### @sync-backlog Integration
+
+Sync memory bank with GitHub:
+1. Fetch all open issues
+2. Update `memory-bank/backlog.md`
+3. Fetch recently closed issues
+4. Update `memory-bank/progress.md`
+5. Report summary (open count, assigned to me, etc.)
+
+## Best Practices
+
+1. **Always Link Issues**: Every commit should reference an issue
+2. **Search Before Implementing**: Check for existing patterns
+3. **Keep Issues Updated**: Comment with progress regularly
+4. **Use Descriptive Titles**: Make issues and PRs easy to understand
+5. **Close Completed Issues**: Don't leave stale open issues
+6. **Sync Regularly**: Keep memory bank in sync with GitHub
+7. **Use Labels**: Categorize issues properly
+8. **Atomic Commits**: One logical change per commit
+9. **Meaningful Messages**: Explain why, not just what
+
+## Error Handling
+
+When GitHub MCP operations fail:
+1. Check if repository exists and is accessible
+2. Verify owner/repo names are correct
+3. Ensure you have necessary permissions
+4. Check if issue/PR number exists
+5. Retry with correct parameters
+6. Fall back to manual operations if needed

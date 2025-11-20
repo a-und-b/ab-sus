@@ -1,109 +1,190 @@
-
-
-import { Participant, INITIAL_PARTICIPANTS, RSVPStatus, FoodItem, EventConfig, DEFAULT_EVENT_CONFIG, AvatarStyle, EmailTemplate, EmailLog, DEFAULT_EMAIL_TEMPLATES } from '../types';
-
-const STORAGE_KEY = 'selbst_selig_data_v1';
-const CONFIG_KEY = 'selbst_selig_config_v1';
-const TEMPLATES_KEY = 'selbst_selig_templates_v1';
-const LOGS_KEY = 'selbst_selig_logs_v1';
+import {
+  Participant,
+  EventConfig,
+  DEFAULT_EVENT_CONFIG,
+  AvatarStyle,
+  EmailTemplate,
+  EmailLog,
+  DEFAULT_EMAIL_TEMPLATES,
+  FoodItem,
+  FoodCategory,
+} from '../types';
+import { supabase } from './supabase';
 
 export const CONFIG_UPDATED_EVENT = 'selbst_selig_config_updated';
 
+// Helper functions to convert between app types and database format
+function participantToDb(p: Participant) {
+  return {
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    status: p.status,
+    avatar_style: p.avatarStyle,
+    avatar_seed: p.avatarSeed,
+    avatar_image: p.avatarImage || null,
+    plus_one: p.plusOne || null,
+    plus_one_allergies: p.plusOneAllergies || null,
+    food_name: p.food?.name || null,
+    food_category: p.food?.category || null,
+    food_description: p.food?.description || null,
+    food_is_vegan: p.food?.isVegan || false,
+    food_is_gluten_free: p.food?.isGlutenFree || false,
+    food_is_lactose_free: p.food?.isLactoseFree || false,
+    food_contains_alcohol: p.food?.containsAlcohol || false,
+    food_contains_nuts: p.food?.containsNuts || false,
+    show_name_in_buffet: p.showNameInBuffet !== false,
+    allergies: p.allergies || null,
+    is_secret_santa: p.isSecretSanta || false,
+    wants_invoice: p.wantsInvoice || false,
+    contribution: p.contribution || null,
+    notes: p.notes || null,
+    last_updated: p.lastUpdated,
+  };
+}
+
+function participantFromDb(row: Record<string, unknown>): Participant {
+  const food: FoodItem | undefined =
+    row.food_name && row.food_category
+      ? {
+          name: row.food_name,
+          category: row.food_category as FoodCategory,
+          description: row.food_description || undefined,
+          isVegan: row.food_is_vegan || false,
+          isGlutenFree: row.food_is_gluten_free || false,
+          isLactoseFree: row.food_is_lactose_free || false,
+          containsAlcohol: row.food_contains_alcohol || false,
+          containsNuts: row.food_contains_nuts || false,
+        }
+      : undefined;
+
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    status: row.status as Participant['status'],
+    avatarStyle: (row.avatar_style || 'micah') as AvatarStyle,
+    avatarSeed: row.avatar_seed || row.name,
+    avatarImage: row.avatar_image || undefined,
+    plusOne: row.plus_one || undefined,
+    plusOneAllergies: row.plus_one_allergies || undefined,
+    food,
+    showNameInBuffet: row.show_name_in_buffet !== false,
+    allergies: row.allergies || undefined,
+    isSecretSanta: row.is_secret_santa || false,
+    wantsInvoice: row.wants_invoice || false,
+    contribution: row.contribution || undefined,
+    notes: row.notes || undefined,
+    lastUpdated: row.last_updated || new Date().toISOString(),
+  };
+}
+
+function configToDb(c: EventConfig) {
+  return {
+    id: 1,
+    title: c.title,
+    subtitle: c.subtitle,
+    date: c.date,
+    time: c.time,
+    location: c.location,
+    max_guests: c.maxGuests,
+    allow_plus_one: c.allowPlusOne,
+    secret_santa_limit: c.secretSantaLimit,
+    dietary_options: c.dietaryOptions,
+    cost: c.cost,
+    hosts: c.hosts,
+    program: c.program,
+    contact_email: c.contactEmail,
+    rsvp_deadline: c.rsvpDeadline,
+  };
+}
+
+function configFromDb(row: Record<string, unknown>): EventConfig {
+  return {
+    title: row.title,
+    subtitle: row.subtitle || '',
+    date: row.date || '',
+    time: row.time || '',
+    location: row.location || '',
+    maxGuests: row.max_guests || 30,
+    allowPlusOne: row.allow_plus_one || false,
+    secretSantaLimit: row.secret_santa_limit || 15,
+    dietaryOptions: row.dietary_options || [],
+    cost: row.cost || '',
+    hosts: row.hosts || '',
+    program: row.program || '',
+    contactEmail: row.contact_email || '',
+    rsvpDeadline: row.rsvp_deadline || '',
+  };
+}
+
+function templateToDb(t: EmailTemplate) {
+  return {
+    id: t.id,
+    name: t.name,
+    subject: t.subject,
+    body: t.body,
+    trigger: t.trigger,
+    description: t.description || null,
+  };
+}
+
+function templateFromDb(row: Record<string, unknown>): EmailTemplate {
+  return {
+    id: row.id,
+    name: row.name,
+    subject: row.subject,
+    body: row.body,
+    trigger: row.trigger as EmailTemplate['trigger'],
+    description: row.description || '',
+  };
+}
+
+function logFromDb(row: Record<string, unknown>): EmailLog {
+  return {
+    id: row.id,
+    date: row.date,
+    templateName: row.template_name,
+    recipientCount: row.recipient_count,
+    recipientsPreview: row.recipients_preview || '',
+    status: row.status as 'sent' | 'failed',
+  };
+}
+
 class DataService {
-  private participants: Participant[];
-  private config: EventConfig;
-  private emailTemplates: EmailTemplate[];
-  private emailLogs: EmailLog[];
-
-  constructor() {
-    // Load Participants
-    const storedData = localStorage.getItem(STORAGE_KEY);
-    if (storedData) {
-      this.participants = JSON.parse(storedData);
-      this.participants = this.participants.map(p => ({
-        ...p,
-        avatarStyle: p.avatarStyle || 'micah',
-        avatarSeed: p.avatarSeed || p.name
-      }));
-    } else {
-      this.participants = INITIAL_PARTICIPANTS;
-      this.saveData();
-    }
-
-    // Load Config
-    const storedConfig = localStorage.getItem(CONFIG_KEY);
-    if (storedConfig) {
-      const parsed = JSON.parse(storedConfig);
-      this.config = { 
-          ...DEFAULT_EVENT_CONFIG, 
-          ...parsed,
-          dietaryOptions: parsed.dietaryOptions || DEFAULT_EVENT_CONFIG.dietaryOptions,
-          program: parsed.program || DEFAULT_EVENT_CONFIG.program,
-          cost: parsed.cost || DEFAULT_EVENT_CONFIG.cost,
-          hosts: parsed.hosts || DEFAULT_EVENT_CONFIG.hosts,
-          contactEmail: parsed.contactEmail || DEFAULT_EVENT_CONFIG.contactEmail,
-          rsvpDeadline: parsed.rsvpDeadline || DEFAULT_EVENT_CONFIG.rsvpDeadline,
-          allowPlusOne: parsed.allowPlusOne !== undefined ? parsed.allowPlusOne : DEFAULT_EVENT_CONFIG.allowPlusOne
-      };
-    } else {
-      this.config = DEFAULT_EVENT_CONFIG;
-      this.saveConfig();
-    }
-
-    // Load Email Templates
-    const storedTemplates = localStorage.getItem(TEMPLATES_KEY);
-    if (storedTemplates) {
-        this.emailTemplates = JSON.parse(storedTemplates);
-    } else {
-        this.emailTemplates = DEFAULT_EMAIL_TEMPLATES;
-        this.saveTemplates();
-    }
-
-    // Load Logs
-    const storedLogs = localStorage.getItem(LOGS_KEY);
-    if (storedLogs) {
-        this.emailLogs = JSON.parse(storedLogs);
-    } else {
-        this.emailLogs = [];
-    }
-  }
-
-  private saveData() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.participants));
-  }
-
-  private saveConfig() {
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(this.config));
-    window.dispatchEvent(new Event(CONFIG_UPDATED_EVENT));
-  }
-
-  private saveTemplates() {
-    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(this.emailTemplates));
-  }
-
-  private saveLogs() {
-    localStorage.setItem(LOGS_KEY, JSON.stringify(this.emailLogs));
-  }
-
   // --- Participant Methods ---
 
-  getAll(): Participant[] {
-    return [...this.participants];
+  async getAll(): Promise<Participant[]> {
+    const { data, error } = await supabase.from('participants').select('*').order('name');
+    if (error) {
+      console.error('Error fetching participants:', error);
+      return [];
+    }
+    return (data || []).map(participantFromDb);
   }
 
-  getById(id: string): Participant | undefined {
-    return this.participants.find(p => p.id === id);
+  async getById(id: string): Promise<Participant | undefined> {
+    const { data, error } = await supabase.from('participants').select('*').eq('id', id).single();
+    if (error || !data) {
+      return undefined;
+    }
+    return participantFromDb(data);
   }
 
-  create(name: string, email: string): Participant {
+  async create(name: string, email: string): Promise<Participant> {
     const newParticipant = this.createParticipantObject(name, email);
-    this.participants.push(newParticipant);
-    this.saveData();
-    return newParticipant;
+    const dbData = participantToDb(newParticipant);
+    const { data, error } = await supabase.from('participants').insert(dbData).select().single();
+    if (error) {
+      console.error('Error creating participant:', error);
+      throw error;
+    }
+    return participantFromDb(data);
   }
 
   private createParticipantObject(name: string, email: string): Participant {
-    const newId = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
+    const newId =
+      Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
     const styles: AvatarStyle[] = ['adventurer', 'micah', 'notionists', 'bottts'];
     const randomStyle = styles[Math.floor(Math.random() * styles.length)];
 
@@ -118,134 +199,213 @@ class DataService {
       isSecretSanta: false,
       wantsInvoice: false,
       contribution: '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     };
   }
 
-  importBatch(candidates: {name: string, email: string}[]): number {
-    let count = 0;
-    candidates.forEach(c => {
-      if (c.name && c.email && !this.participants.some(p => p.email.toLowerCase() === c.email.toLowerCase())) {
-        const newParticipant = this.createParticipantObject(c.name, c.email);
-        this.participants.push(newParticipant);
-        count++;
-      }
-    });
-    if (count > 0) {
-      this.saveData();
+  async importBatch(candidates: { name: string; email: string }[]): Promise<number> {
+    const existing = await this.getAll();
+    const existingEmails = new Set(existing.map((p) => p.email.toLowerCase()));
+
+    const toInsert = candidates
+      .filter((c) => c.name && c.email && !existingEmails.has(c.email.toLowerCase()))
+      .map((c) => participantToDb(this.createParticipantObject(c.name, c.email)));
+
+    if (toInsert.length === 0) return 0;
+
+    const { error } = await supabase.from('participants').insert(toInsert);
+    if (error) {
+      console.error('Error importing batch:', error);
+      return 0;
     }
-    return count;
+    return toInsert.length;
   }
 
-  update(id: string, updates: Partial<Participant>): Participant | null {
-    const index = this.participants.findIndex(p => p.id === id);
-    if (index === -1) return null;
+  async update(id: string, updates: Partial<Participant>): Promise<Participant | null> {
+    const current = await this.getById(id);
+    if (!current) return null;
 
-    this.participants[index] = {
-      ...this.participants[index],
+    const updated: Participant = {
+      ...current,
       ...updates,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     };
-    this.saveData();
-    return this.participants[index];
+
+    const dbData = participantToDb(updated);
+    const { data, error } = await supabase
+      .from('participants')
+      .update(dbData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error('Error updating participant:', error);
+      return null;
+    }
+    return participantFromDb(data);
   }
 
-  reset() {
-    this.participants = INITIAL_PARTICIPANTS;
-    this.saveData();
+  async reset(): Promise<void> {
+    const { error } = await supabase.from('participants').delete().neq('id', '');
+    if (error) {
+      console.error('Error resetting participants:', error);
+    }
   }
 
   // --- Config Methods ---
 
-  getConfig(): EventConfig {
-    return { ...this.config };
+  async getConfig(): Promise<EventConfig> {
+    const { data, error } = await supabase.from('event_config').select('*').eq('id', 1).single();
+    if (error || !data) {
+      return DEFAULT_EVENT_CONFIG;
+    }
+    return configFromDb(data);
   }
 
-  updateConfig(updates: Partial<EventConfig>): EventConfig {
-    this.config = { ...this.config, ...updates };
-    this.saveConfig();
-    return this.config;
+  async updateConfig(updates: Partial<EventConfig>): Promise<EventConfig> {
+    const current = await this.getConfig();
+    const updated = { ...current, ...updates };
+    const dbData = configToDb(updated);
+
+    const { data, error } = await supabase
+      .from('event_config')
+      .upsert(dbData)
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error('Error updating config:', error);
+      return current;
+    }
+
+    window.dispatchEvent(new Event(CONFIG_UPDATED_EVENT));
+    return configFromDb(data);
   }
 
   // --- Email System Methods ---
 
-  getEmailTemplates(): EmailTemplate[] {
-    return [...this.emailTemplates];
+  async getEmailTemplates(): Promise<EmailTemplate[]> {
+    const { data, error } = await supabase.from('email_templates').select('*').order('id');
+    if (error) {
+      console.error('Error fetching templates:', error);
+      return DEFAULT_EMAIL_TEMPLATES;
+    }
+    if (!data || data.length === 0) {
+      // Initialize templates if empty
+      await this.initializeTemplates();
+      return DEFAULT_EMAIL_TEMPLATES;
+    }
+    return data.map(templateFromDb);
   }
 
-  updateEmailTemplate(id: string, updates: Partial<EmailTemplate>): void {
-    const index = this.emailTemplates.findIndex(t => t.id === id);
-    if (index !== -1) {
-        this.emailTemplates[index] = { ...this.emailTemplates[index], ...updates };
-        this.saveTemplates();
+  private async initializeTemplates(): Promise<void> {
+    const templates = DEFAULT_EMAIL_TEMPLATES.map(templateToDb);
+    await supabase.from('email_templates').insert(templates);
+  }
+
+  async updateEmailTemplate(id: string, updates: Partial<EmailTemplate>): Promise<void> {
+    const templates = await this.getEmailTemplates();
+    const current = templates.find((t) => t.id === id);
+    if (!current) return;
+
+    const updated = { ...current, ...updates };
+    const dbData = templateToDb(updated);
+
+    const { error } = await supabase.from('email_templates').upsert(dbData).eq('id', id);
+    if (error) {
+      console.error('Error updating template:', error);
     }
   }
 
-  getEmailLogs(): EmailLog[] {
-      return [...this.emailLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  async getEmailLogs(): Promise<EmailLog[]> {
+    const { data, error } = await supabase
+      .from('email_logs')
+      .select('*')
+      .order('date', { ascending: false });
+    if (error) {
+      console.error('Error fetching logs:', error);
+      return [];
+    }
+    return (data || []).map(logFromDb);
   }
 
-  // Mock Sending Function - Replace this with actual Resend API call later
-  sendEmailBatch(templateId: string, recipients: Participant[]): Promise<boolean> {
-      return new Promise((resolve) => {
-          const template = this.emailTemplates.find(t => t.id === templateId);
-          if (!template || recipients.length === 0) {
-              resolve(false);
-              return;
-          }
+  async sendEmailBatch(templateId: string, recipients: Participant[]): Promise<boolean> {
+    const templates = await this.getEmailTemplates();
+    const template = templates.find((t) => t.id === templateId);
+    if (!template || recipients.length === 0) {
+      return false;
+    }
 
-          const attendingCount = this.participants.filter(p => p.status === 'attending').length;
+    const config = await this.getConfig();
+    const allParticipants = await this.getAll();
+    const attendingCount = allParticipants.filter((p) => p.status === 'attending').length;
 
-          console.group(`📧 Sending Email Batch: ${template.name}`);
-          
-          recipients.forEach(p => {
-              let body = template.body;
-              let subject = template.subject;
-              
-              // Replacements
-              const link = `${window.location.origin}/#/p/${p.id}`;
-              const replacements: Record<string, string> = {
-                  '{{name}}': p.name.split(' ')[0],
-                  '{{fullname}}': p.name,
-                  '{{email}}': p.email,
-                  '{{link}}': link,
-                  '{{date}}': this.config.date,
-                  '{{time}}': this.config.time,
-                  '{{location}}': this.config.location,
-                  '{{cost}}': this.config.cost,
-                  '{{hosts}}': this.config.hosts,
-                  '{{secretSantaLimit}}': this.config.secretSantaLimit.toString(),
-                  '{{guestCount}}': attendingCount.toString(),
-                  '{{food}}': p.food?.name || 'noch nichts eingetragen',
-                  '{{plusOne}}': p.plusOne || 'keine'
-              };
+    // Prepare emails with personalized content
+    const emails = recipients.map((p) => {
+      let body = template.body;
+      let subject = template.subject;
 
-              Object.entries(replacements).forEach(([key, val]) => {
-                  body = body.split(key).join(val);
-                  subject = subject.split(key).join(val);
-              });
+      const link = `${window.location.origin}/#/p/${p.id}`;
+      const replacements: Record<string, string> = {
+        '{{name}}': p.name.split(' ')[0],
+        '{{fullname}}': p.name,
+        '{{email}}': p.email,
+        '{{link}}': link,
+        '{{date}}': config.date,
+        '{{time}}': config.time,
+        '{{location}}': config.location,
+        '{{cost}}': config.cost,
+        '{{hosts}}': config.hosts,
+        '{{secretSantaLimit}}': config.secretSantaLimit.toString(),
+        '{{guestCount}}': attendingCount.toString(),
+        '{{food}}': p.food?.name || 'noch nichts eingetragen',
+        '{{plusOne}}': p.plusOne || 'keine',
+      };
 
-              // Here you would call: await resend.emails.send({ to: p.email, subject, html: body ... })
-              console.log(`To: ${p.email} | Subject: ${subject}`);
-              // console.log(body); // Uncomment to see full body
-          });
-          console.groupEnd();
-
-          // Log entry
-          const newLog: EmailLog = {
-              id: Date.now().toString(),
-              date: new Date().toISOString(),
-              templateName: template.name,
-              recipientCount: recipients.length,
-              recipientsPreview: recipients.slice(0, 3).map(p => p.name).join(', ') + (recipients.length > 3 ? '...' : ''),
-              status: 'sent'
-          };
-          this.emailLogs.push(newLog);
-          this.saveLogs();
-
-          // Simulate network delay
-          setTimeout(() => resolve(true), 800);
+      Object.entries(replacements).forEach(([key, val]) => {
+        body = body.split(key).join(val);
+        subject = subject.split(key).join(val);
       });
+
+      return {
+        to: p.email,
+        subject,
+        html: body.replace(/\n/g, '<br>'),
+      };
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: { emails },
+      });
+
+      if (error) {
+        console.error('Email sending error:', error);
+        throw error;
+      }
+
+      // Log entry
+      const newLog = {
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        template_name: template.name,
+        recipient_count: recipients.length,
+        recipients_preview:
+          recipients
+            .slice(0, 3)
+            .map((p) => p.name)
+            .join(', ') + (recipients.length > 3 ? '...' : ''),
+        status: 'sent' as const,
+      };
+
+      await supabase.from('email_logs').insert(newLog);
+
+      return data.success;
+    } catch (error) {
+      console.error('Failed to send emails:', error);
+      return false;
+    }
   }
 }
 

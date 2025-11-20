@@ -21,16 +21,16 @@ create table participants (
   name text not null,
   email text not null,
   status text default 'pending',    -- 'attending', 'declined', 'maybe', 'pending'
-  
+
   -- Profildaten
   avatar_style text,
   avatar_seed text,
   avatar_image text,                -- Base64 String (Vorsicht: kann groß werden, evtl. Storage nutzen wenn >1MB)
-  
+
   -- Begleitung
   plus_one text,
   plus_one_allergies text,
-  
+
   -- Buffet & Logistik
   food jsonb,                       -- Speichert das FoodItem Objekt: {name, category, isVegan...}
   show_name_in_buffet boolean default true,
@@ -39,7 +39,7 @@ create table participants (
   wants_invoice boolean default false,
   contribution text,                -- Aktiver Beitrag (Gedicht etc.)
   notes text,
-  
+
   updated_at timestamptz default now()
 );
 
@@ -107,6 +107,6 @@ create policy "Enable all access for public" on email_logs for all using (true) 
 
 Beim Umbau des `dataService.ts` ist auf folgendes Mapping zu achten:
 
-*   TypeScript `camelCase` -> SQL `snake_case` (z.B. `avatarStyle` -> `avatar_style`).
-*   Das `food` Objekt in TypeScript kann in Supabase direkt in eine `jsonb` Spalte gespeichert werden.
-*   `lastUpdated` in TypeScript entspricht `updated_at` in SQL.
+- TypeScript `camelCase` -> SQL `snake_case` (z.B. `avatarStyle` -> `avatar_style`).
+- Das `food` Objekt in TypeScript kann in Supabase direkt in eine `jsonb` Spalte gespeichert werden.
+- `lastUpdated` in TypeScript entspricht `updated_at` in SQL.

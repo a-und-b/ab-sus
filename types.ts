@@ -1,5 +1,3 @@
-
-
 export type RSVPStatus = 'attending' | 'declined' | 'maybe' | 'pending';
 
 export enum FoodCategory {
@@ -7,39 +5,65 @@ export enum FoodCategory {
   MAIN = 'Hauptgericht',
   SIDE = 'Beilage',
   DESSERT = 'Dessert',
-  DRINK = 'Getränk'
+  DRINK = 'Getränk',
 }
 
 export const BUFFET_INSPIRATIONS: Record<FoodCategory, string[]> = {
   [FoodCategory.APPETIZER]: [
-    'Tomate-Mozzarella Spieße', 'Gemüsesticks mit Dip', 'Blätterteigschnecken', 
-    'Bruschetta', 'Gefüllte Eier', 'Antipasti-Platte', 'Käsewürfel & Trauben'
+    'Tomate-Mozzarella Spieße',
+    'Gemüsesticks mit Dip',
+    'Blätterteigschnecken',
+    'Bruschetta',
+    'Gefüllte Eier',
+    'Antipasti-Platte',
+    'Käsewürfel & Trauben',
   ],
   [FoodCategory.MAIN]: [
-    'Chili con Carne', 'Linseneintopf', 'Party-Frikadellen', 
-    'Gemüselasagne', 'Herzhafte Quiche', 'Currywurst-Topf', 'Falafel-Bällchen'
+    'Chili con Carne',
+    'Linseneintopf',
+    'Party-Frikadellen',
+    'Gemüselasagne',
+    'Herzhafte Quiche',
+    'Currywurst-Topf',
+    'Falafel-Bällchen',
   ],
   [FoodCategory.SIDE]: [
-    'Kartoffelsalat', 'Nudelsalat', 'Frisches Baguette & Kräuterbutter', 
-    'Couscous-Salat', 'Rosmarinkartoffeln', 'Focaccia', 'Krautsalat'
+    'Kartoffelsalat',
+    'Nudelsalat',
+    'Frisches Baguette & Kräuterbutter',
+    'Couscous-Salat',
+    'Rosmarinkartoffeln',
+    'Focaccia',
+    'Krautsalat',
   ],
   [FoodCategory.DESSERT]: [
-    'Tiramisu', 'Mousse au Chocolat', 'Obstsalat', 'Brownies', 
-    'Weihnachtsplätzchen', 'Panna Cotta', 'Zimt-Schnecken', 'Lebkuchen'
+    'Tiramisu',
+    'Mousse au Chocolat',
+    'Obstsalat',
+    'Brownies',
+    'Weihnachtsplätzchen',
+    'Panna Cotta',
+    'Zimt-Schnecken',
+    'Lebkuchen',
   ],
   [FoodCategory.DRINK]: [
-    'Kiste Bier', 'Flasche Rotwein', 'Flasche Weißwein', 'Alkoholfreier Punsch', 
-    'Cola/Limo Kasten', 'Sekt zum Anstoßen', 'Selbstgemachter Eistee'
-  ]
+    'Kiste Bier',
+    'Flasche Rotwein',
+    'Flasche Weißwein',
+    'Alkoholfreier Punsch',
+    'Cola/Limo Kasten',
+    'Sekt zum Anstoßen',
+    'Selbstgemachter Eistee',
+  ],
 };
 
 export const AVATAR_STYLES = {
-  'adventurer': 'Abenteurer',
-  'micah': 'Künstlerisch',
-  'notionists': 'Skizze',
-  'avataaars': 'Comic',
-  'bottts': 'Roboter',
-  'shapes': 'Abstrakt'
+  adventurer: 'Abenteurer',
+  micah: 'Künstlerisch',
+  notionists: 'Skizze',
+  avataaars: 'Comic',
+  bottts: 'Roboter',
+  shapes: 'Abstrakt',
 };
 
 export type AvatarStyle = keyof typeof AVATAR_STYLES;
@@ -101,12 +125,20 @@ export const DEFAULT_EVENT_CONFIG: EventConfig = {
   maxGuests: 30,
   allowPlusOne: false, // Default to false as requested
   secretSantaLimit: 15,
-  dietaryOptions: ['Vegetarisch', 'Vegan', 'Glutenfrei', 'Laktosefrei', 'Nussallergie', 'Alkoholfrei'],
+  dietaryOptions: [
+    'Vegetarisch',
+    'Vegan',
+    'Glutenfrei',
+    'Laktosefrei',
+    'Nussallergie',
+    'Alkoholfrei',
+  ],
   cost: '25 € pro Person',
   hosts: 'Holger, Daniela, Finn und Judith',
-  program: 'Glühwein-Empfang, Gemeinsames Buffet, Fackelwanderung, Ugly Christmas Sweater Wettbewerb, Musik & Feuerschale',
+  program:
+    'Glühwein-Empfang, Gemeinsames Buffet, Fackelwanderung, Ugly Christmas Sweater Wettbewerb, Musik & Feuerschale',
   contactEmail: 'info@andersundbesser.de',
-  rsvpDeadline: '2025-12-10'
+  rsvpDeadline: '2025-12-10',
 };
 
 // --- Email System Types ---
@@ -152,7 +184,7 @@ Hier ist dein persönlicher Link zum Zu-/Absagen und Buffet planen:
 {{link}}
 
 Wir freuen uns auf eine entspannte Runde!
-{{hosts}}`
+{{hosts}}`,
   },
   {
     id: 't2_confirm',
@@ -172,7 +204,7 @@ Falls du noch etwas ändern möchtest, nutze einfach deinen Link:
 {{link}}
 
 Bis bald,
-{{hosts}}`
+{{hosts}}`,
   },
   {
     id: 't3_followup',
@@ -191,7 +223,7 @@ Falls du noch nicht fest zugesagt hast oder dein Mitbringsel eintragen möchtest
 {{link}}
 
 Vorfreudige Grüße,
-{{hosts}}`
+{{hosts}}`,
   },
   {
     id: 't4_reminder',
@@ -209,7 +241,7 @@ Wichtige Reminder:
 3. Buffet: Du bringst "{{food}}" mit. Danke!
 
 Wir freuen uns auf dich!
-{{hosts}}`
+{{hosts}}`,
   },
   {
     id: 't5_thankyou',
@@ -225,8 +257,8 @@ Es war wunderschön, mit euch allen zu feiern.
 Wir hoffen, du bist gut nach Hause gekommen und hast die Feiertage nun entspannt im Blick.
 
 Frohe Weihnachten!
-{{hosts}}`
-  }
+{{hosts}}`,
+  },
 ];
 
 export const INITIAL_PARTICIPANTS: Participant[] = [
@@ -244,13 +276,13 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
       isGlutenFree: true,
       isLactoseFree: true,
       containsAlcohol: false,
-      containsNuts: false
+      containsNuts: false,
     },
     showNameInBuffet: true,
     isSecretSanta: true,
     wantsInvoice: false,
     contribution: 'Ich bringe Knabberzeug mit',
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'b8x2l1p9',
@@ -260,7 +292,7 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     avatarStyle: 'micah',
     avatarSeed: 'Markus',
     isSecretSanta: false,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'c4m5q8r3',
@@ -278,14 +310,14 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
       isGlutenFree: false,
       isLactoseFree: false,
       containsAlcohol: true,
-      containsNuts: false
+      containsNuts: false,
     },
     allergies: 'Haselnüsse',
     showNameInBuffet: true,
     isSecretSanta: true,
     wantsInvoice: true,
     contribution: 'Fotografieren',
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'd5n6t9u1',
@@ -301,14 +333,14 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
       isGlutenFree: true,
       isLactoseFree: true,
       containsAlcohol: false,
-      containsNuts: false
+      containsNuts: false,
     },
     allergies: 'Glutenfrei',
     showNameInBuffet: true,
     isSecretSanta: false,
     wantsInvoice: true,
     contribution: 'Ein Weihnachtsgedicht vortragen',
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'e7r8v2w4',
@@ -318,7 +350,7 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     avatarStyle: 'avataaars',
     avatarSeed: 'Stefan',
     isSecretSanta: false,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'f9s1x3y5',
@@ -328,7 +360,7 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     avatarStyle: 'shapes',
     avatarSeed: 'Lisa',
     isSecretSanta: false,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'g2h4j6k8',
@@ -346,9 +378,9 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
       isGlutenFree: true,
       isLactoseFree: true,
       containsAlcohol: true,
-      containsNuts: false
+      containsNuts: false,
     },
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'h3j5l7n9',
@@ -358,7 +390,7 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     avatarStyle: 'micah',
     avatarSeed: 'Katrin',
     isSecretSanta: false,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'i4k6m8o1',
@@ -368,7 +400,7 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     avatarStyle: 'bottts',
     avatarSeed: 'Tom',
     isSecretSanta: false,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'j5l7n9p2',
@@ -386,10 +418,10 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
       isGlutenFree: true,
       isLactoseFree: false, // Schmand etc.
       containsAlcohol: false,
-      containsNuts: false
+      containsNuts: false,
     },
     contribution: 'Musikbox',
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'k6m8o1q3',
@@ -408,9 +440,9 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
       isGlutenFree: false,
       isLactoseFree: false,
       containsAlcohol: false,
-      containsNuts: false
+      containsNuts: false,
     },
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'l7n9p2r4',
@@ -428,9 +460,9 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
       isGlutenFree: false,
       isLactoseFree: false,
       containsAlcohol: false,
-      containsNuts: true
+      containsNuts: true,
     },
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'm8o1q3s5',
@@ -449,9 +481,9 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
       isGlutenFree: true,
       isLactoseFree: false,
       containsAlcohol: false,
-      containsNuts: true // Walnüsse Deko
+      containsNuts: true, // Walnüsse Deko
     },
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
   },
   {
     id: 'judith-demo',
@@ -461,6 +493,6 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     avatarStyle: 'micah',
     avatarSeed: 'Judith',
     isSecretSanta: false,
-    lastUpdated: new Date().toISOString()
-  }
+    lastUpdated: new Date().toISOString(),
+  },
 ];
