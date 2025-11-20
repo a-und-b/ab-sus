@@ -8,5 +8,3 @@ describe('App', () => {
     expect(screen.getByText(/Willkommen/i)).toBeDefined();
   });
 });
-
-

@@ -62,7 +62,7 @@ export const Chatbot: React.FC = () => {
 
     try {
       const systemInstruction = await getSystemInstruction();
-      
+
       const { data, error } = await supabase.functions.invoke('gemini-ai', {
         body: {
           action: 'chat',

@@ -19,17 +19,20 @@ RESEND_API_KEY = your_resend_api_key
 ### 2. Create Admin User (REQUIRED for admin access)
 
 In Supabase Dashboard > Authentication > Users > Invite User
+
 - Email: your-admin@email.com
 - They'll get a magic link to set password
 
 ### 3. Test the Deployment
 
 Guest Pages (demo participants already in DB):
+
 - Anna (attending): `/#/p/a3f7k9m2`
 - Markus (pending): `/#/p/b8x2l1p9`
 - Judith (pending): `/#/p/judith-demo`
 
 Admin:
+
 - Login: `/#/admin`
 - Use your created admin credentials
 
@@ -46,6 +49,7 @@ npm run build    # Test production build
 ## 📦 What's Deployed
 
 ### Backend (Supabase)
+
 - ✅ PostgreSQL database with 4 tables
 - ✅ Row Level Security enabled
 - ✅ 2 Edge Functions deployed:
@@ -53,6 +57,7 @@ npm run build    # Test production build
   - `send-email` (Resend integration)
 
 ### Frontend (Vercel)
+
 - ✅ React SPA with hash routing
 - ✅ Real-time database sync
 - ✅ Secure authentication
@@ -76,5 +81,3 @@ npm run build    # Test production build
 ---
 
 **Status:** ✅ Production Ready (API keys needed for full functionality)
-
-

@@ -25,7 +25,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
 
       if (error) {
         console.error('Supabase Auth Error:', error);
-        
+
         // Provide more user-friendly error messages
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('Falsche E-Mail-Adresse oder Passwort');
@@ -62,12 +62,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
           <Lock size={32} />
         </div>
         <h2 className="text-2xl font-serif font-bold mb-6 text-stone-800">Admin Login</h2>
-        
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg">
-            {error}
-          </div>
-        )}
+
+        {error && <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg">{error}</div>}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <label className="block text-left">
@@ -107,4 +103,3 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
     </div>
   );
 };
-

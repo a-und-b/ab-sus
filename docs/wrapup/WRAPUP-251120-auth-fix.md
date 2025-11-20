@@ -25,12 +25,14 @@
 
 **Original Issue:** User reported 400 Bad Request error when attempting to login at https://ab-sus.vercel.app/#/admin
 
-**Root Cause:** 
+**Root Cause:**
+
 - Potentially wrong credentials being entered
 - Poor error messaging - the application wasn't providing specific, user-friendly error feedback in German
 - No email trimming, allowing whitespace to cause login failures
 
 **Solution:**
+
 - Enhanced error handling with detailed German messages
 - Added automatic email trimming
 - Implemented console logging for debugging
@@ -54,12 +56,14 @@
 ### 🔍 Supabase Status
 
 **Project:** selbst-und-selig (ohsvzndgmefzvxyxubyq)
+
 - Status: ✅ ACTIVE_HEALTHY
 - Region: eu-central-1
 - Database: PostgreSQL 17.6
 - Auth users: 1 confirmed user (`holger@andersundbesser.de`)
 
 **Security Advisory:**
+
 - ⚠️ Leaked Password Protection Disabled (recommended to enable in Supabase Dashboard)
 
 ### 🚀 Deployment
@@ -76,12 +80,14 @@
 ### 🔄 Next Steps
 
 **Immediate Actions (User):**
+
 1. Wait for Vercel deployment to complete (~2 minutes)
 2. Try logging in again at https://ab-sus.vercel.app/#/admin
 3. Verify correct credentials for `holger@andersundbesser.de`
 4. Check browser console for detailed error messages if login still fails
 
 **Optional Improvements:**
+
 1. Enable Leaked Password Protection in Supabase Dashboard
 2. Add password reset functionality
 3. Add "Forgot Password" link to login page

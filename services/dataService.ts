@@ -268,11 +268,7 @@ class DataService {
     const updated = { ...current, ...updates };
     const dbData = configToDb(updated);
 
-    const { data, error } = await supabase
-      .from('event_config')
-      .upsert(dbData)
-      .select()
-      .single();
+    const { data, error } = await supabase.from('event_config').upsert(dbData).select().single();
 
     if (error || !data) {
       console.error('Error updating config:', error);

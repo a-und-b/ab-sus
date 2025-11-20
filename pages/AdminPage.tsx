@@ -146,14 +146,14 @@ export const AdminPage: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      // eslint-disable-next-line 
+      // eslint-disable-next-line
       loadData();
     }
   }, [isAuthenticated, loadData]);
 
   useEffect(() => {
     const t = templates.find((t) => t.id === selectedTemplateId);
-    // eslint-disable-next-line 
+    // eslint-disable-next-line
     if (t) setEditingTemplate(t);
   }, [selectedTemplateId, templates]);
 
@@ -298,9 +298,13 @@ export const AdminPage: React.FC = () => {
     if (sortConfigState) {
       items.sort((a, b) => {
         let aVal: string | number | boolean =
-          sortConfigState.key === 'food' ? a.food?.name || '' : a[sortConfigState.key] as string | number | boolean;
+          sortConfigState.key === 'food'
+            ? a.food?.name || ''
+            : (a[sortConfigState.key] as string | number | boolean);
         let bVal: string | number | boolean =
-          sortConfigState.key === 'food' ? b.food?.name || '' : b[sortConfigState.key] as string | number | boolean;
+          sortConfigState.key === 'food'
+            ? b.food?.name || ''
+            : (b[sortConfigState.key] as string | number | boolean);
         if (typeof aVal === 'string') aVal = aVal.toLowerCase();
         if (typeof bVal === 'string') bVal = bVal.toLowerCase();
         if (aVal < bVal) return sortConfigState.direction === 'asc' ? -1 : 1;
@@ -792,7 +796,8 @@ export const AdminPage: React.FC = () => {
                     <a
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(config.location)}`}
                       target="_blank"
-                      className="absolute right-3 top-3.5 text-stone-400 hover:text-stone-800" rel="noreferrer"
+                      className="absolute right-3 top-3.5 text-stone-400 hover:text-stone-800"
+                      rel="noreferrer"
                     >
                       <ExternalLink size={14} />
                     </a>

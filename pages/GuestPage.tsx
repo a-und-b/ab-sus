@@ -56,33 +56,34 @@ interface GuestPageProps {
 type GuestTab = 'info' | 'list' | 'action';
 
 // Helper for rich program display
-const PROGRAM_ENRICHMENT: Record<string, { desc: string; icon: React.ElementType; color: string }> = {
-  'Glühwein-Empfang': {
-    desc: 'Wir starten gemütlich am Feuer mit heißen Getränken.',
-    icon: Wine,
-    color: 'text-red-500 bg-red-50',
-  },
-  'Gemeinsames Buffet': {
-    desc: 'Jeder steuert etwas bei – von Herzhaft bis Süß.',
-    icon: Utensils,
-    color: 'text-amber-500 bg-amber-50',
-  },
-  Fackelwanderung: {
-    desc: 'Ein stimmungsvoller Spaziergang durch die Winternacht.',
-    icon: Flame,
-    color: 'text-orange-500 bg-orange-50',
-  },
-  'Ugly Christmas Sweater Wettbewerb': {
-    desc: 'Zieh dein schrägstes Teil an und gewinne Ruhm & Ehre!',
-    icon: Snowflake,
-    color: 'text-blue-500 bg-blue-50',
-  },
-  'Musik & Feuerschale': {
-    desc: 'Ausklang mit guten Gesprächen und Knistern.',
-    icon: Music,
-    color: 'text-purple-500 bg-purple-50',
-  },
-};
+const PROGRAM_ENRICHMENT: Record<string, { desc: string; icon: React.ElementType; color: string }> =
+  {
+    'Glühwein-Empfang': {
+      desc: 'Wir starten gemütlich am Feuer mit heißen Getränken.',
+      icon: Wine,
+      color: 'text-red-500 bg-red-50',
+    },
+    'Gemeinsames Buffet': {
+      desc: 'Jeder steuert etwas bei – von Herzhaft bis Süß.',
+      icon: Utensils,
+      color: 'text-amber-500 bg-amber-50',
+    },
+    Fackelwanderung: {
+      desc: 'Ein stimmungsvoller Spaziergang durch die Winternacht.',
+      icon: Flame,
+      color: 'text-orange-500 bg-orange-50',
+    },
+    'Ugly Christmas Sweater Wettbewerb': {
+      desc: 'Zieh dein schrägstes Teil an und gewinne Ruhm & Ehre!',
+      icon: Snowflake,
+      color: 'text-blue-500 bg-blue-50',
+    },
+    'Musik & Feuerschale': {
+      desc: 'Ausklang mit guten Gesprächen und Knistern.',
+      icon: Music,
+      color: 'text-purple-500 bg-purple-50',
+    },
+  };
 
 export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
   const [participant, setParticipant] = useState<Participant | null>(null);
@@ -179,22 +180,25 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
         setPlusOne(p.plusOne || '');
         setHasPlusOne(!!p.plusOne);
 
-        // Use the helper directly or assume it's stable enough here, 
+        // Use the helper directly or assume it's stable enough here,
         // but since we are inside useEffect, we can just use the logic or call the memoized callback if available.
-        // Note: We can't call the callback if it depends on state not yet available, but here it depends on eventConfig which is set inside the timeout? 
+        // Note: We can't call the callback if it depends on state not yet available, but here it depends on eventConfig which is set inside the timeout?
         // Actually eventConfig is state.
-        // So we need to be careful. 
+        // So we need to be careful.
         // Let's just duplicate the logic here slightly or rely on the fact that eventConfig has initial value.
-        
+
         // Initial parse logic using the fetched config directly to avoid dependency issues
-        const currentConfig = config; 
-        
+        const currentConfig = config;
+
         const parseLocal = (str: string) => {
-            if (!str) return { selection: [], custom: '' };
-            const parts = str.split(',').map((s) => s.trim()).filter(Boolean);
-            const selection = parts.filter((p) => currentConfig.dietaryOptions.includes(p));
-            const custom = parts.filter((p) => !currentConfig.dietaryOptions.includes(p)).join(', ');
-            return { selection, custom };
+          if (!str) return { selection: [], custom: '' };
+          const parts = str
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          const selection = parts.filter((p) => currentConfig.dietaryOptions.includes(p));
+          const custom = parts.filter((p) => !currentConfig.dietaryOptions.includes(p)).join(', ');
+          return { selection, custom };
         };
 
         const userAllergiesParsed = parseLocal(p.allergies || '');
