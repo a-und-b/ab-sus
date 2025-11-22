@@ -42,3 +42,4 @@ fix(admin): restore error handling and add RLS policies for event config
 - Confirmed successful save persists to database via Chrome DevTools
 
 The admin dashboard settings are now fully functional and persistent!
+

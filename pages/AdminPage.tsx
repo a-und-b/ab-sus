@@ -510,101 +510,59 @@ export const AdminPage: React.FC = () => {
   return (
     <div className="space-y-10 pb-20">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4 pb-4 border-b border-stone-200">
-        <div>
-          <h2 className="text-4xl font-serif font-bold text-stone-800">Dashboard</h2>
-          <p className="text-stone-500 mt-1">Verwalte deine Gäste und die Party-Details.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-4 pb-4 border-b border-stone-200">
+        <div className="w-full md:w-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-stone-800">Dashboard</h2>
+          <p className="text-stone-500 mt-1 text-sm md:text-base">Verwalte deine Gäste und die Party-Details.</p>
         </div>
 
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 text-stone-500 hover:text-stone-800 px-4 py-2 rounded-lg hover:bg-stone-100 transition-colors"
-        >
-          <LogOut size={16} />
-          Abmelden
-        </button>
-      </div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+          {/* Tab Switcher */}
+          <div className="bg-stone-100 p-1 rounded-xl flex flex-wrap sm:flex-nowrap gap-1 overflow-x-auto sm:overflow-visible">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${activeTab === 'dashboard' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+            >
+              <LayoutDashboard size={14} /> <span>Dashboard</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('setup')}
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${activeTab === 'setup' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+            >
+              <Settings size={14} /> <span>Event Setup</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('guests')}
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${activeTab === 'guests' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+            >
+              <Users size={14} /> <span>Gästeliste</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('emails')}
+              className={`px-3 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${activeTab === 'emails' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+            >
+              <Mail size={14} /> <span>E-Mail Center</span>
+            </button>
+          </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-        <div></div>
-
-        {/* Tab Switcher */}
-        <div className="bg-stone-100 p-1 rounded-xl flex flex-wrap gap-1">
           <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${activeTab === 'dashboard' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+            onClick={handleLogout}
+            className="flex items-center justify-center sm:justify-start gap-2 text-stone-500 hover:text-stone-800 px-2 py-2 rounded-lg hover:bg-stone-100 transition-colors whitespace-nowrap self-start sm:self-auto"
           >
-            <LayoutDashboard size={16} /> Dashboard
-          </button>
-          <button
-            onClick={() => setActiveTab('setup')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${activeTab === 'setup' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
-          >
-            <Settings size={16} /> Event Setup
-          </button>
-          <button
-            onClick={() => setActiveTab('guests')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${activeTab === 'guests' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
-          >
-            <Users size={16} /> Gästeliste
-          </button>
-          <button
-            onClick={() => setActiveTab('emails')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${activeTab === 'emails' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
-          >
-            <Mail size={16} /> E-Mail Center
-          </button>
+            <LogOut size={16} />          </button>
         </div>
       </div>
 
       {/* --- TAB: DASHBOARD --- */}
       {activeTab === 'dashboard' && (
         <div className="space-y-8 animate-fade-in">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              {
-                label: 'Gäste Gesamt',
-                val: stats.attending + stats.plusOnes,
-                sub: `/ ${config?.maxGuests}`,
-                color: 'border-blue-500',
-              },
-              { label: 'Zusagen', val: stats.attending, sub: 'Gäste', color: 'border-green-500' },
-              {
-                label: 'Offen',
-                val: stats.pending,
-                sub: 'Einladungen',
-                color: 'border-yellow-500',
-              },
-              {
-                label: 'Wichteln',
-                val: stats.secretSanta,
-                sub: 'Teilnehmer',
-                color: 'border-purple-500',
-              },
-            ].map((stat, i) => (
-              <div
-                key={i}
-                className={`bg-white p-6 rounded-2xl shadow-sm border-l-4 ${stat.color}`}
-              >
-                <p className="text-stone-400 text-xs uppercase tracking-wider font-bold mb-1">
-                  {stat.label}
-                </p>
-                <p className="text-3xl font-serif font-bold text-stone-800">
-                  {stat.val}{' '}
-                  <span className="text-sm text-stone-300 font-sans font-normal">{stat.sub}</span>
-                </p>
-              </div>
-            ))}
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Status Chart */}
             <div className={cardStyle}>
               <h3 className="font-bold text-lg text-stone-800 mb-6 flex items-center gap-2">
-                <PieIcon className="text-stone-400" /> Status Übersicht
+                <Clock className="text-stone-400" /> Status Übersicht
               </h3>
-              <div className="h-64 w-full">
+              <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
                     <XAxis
@@ -631,6 +589,44 @@ export const AdminPage: React.FC = () => {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+
+            {/* Stats Grid - 2x2 */}
+            <div className="grid grid-cols-2 gap-6">
+              {[
+                {
+                  label: 'Gäste Gesamt',
+                  val: stats.attending + stats.plusOnes,
+                  sub: `/ ${config?.maxGuests}`,
+                  color: 'border-blue-500',
+                },
+                { label: 'Zusagen', val: stats.attending, sub: 'Gäste', color: 'border-green-500' },
+                {
+                  label: 'Offen',
+                  val: stats.pending,
+                  sub: 'Einladungen',
+                  color: 'border-yellow-500',
+                },
+                {
+                  label: 'Wichteln',
+                  val: stats.secretSanta,
+                  sub: 'Teilnehmer',
+                  color: 'border-purple-500',
+                },
+              ].map((stat, i) => (
+                <div
+                  key={i}
+                  className={`bg-white p-6 rounded-2xl shadow-sm border-l-4 ${stat.color}`}
+                >
+                  <p className="text-stone-400 text-xs uppercase tracking-wider font-bold mb-1">
+                    {stat.label}
+                  </p>
+                  <p className="text-3xl font-serif font-bold text-stone-800">
+                    {stat.val}{' '}
+                    <span className="text-sm text-stone-300 font-sans font-normal">{stat.sub}</span>
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { User } from 'lucide-react';
 import { AvatarStyle } from '../types';
 
 interface AvatarProps {
@@ -16,6 +17,18 @@ export const Avatar: React.FC<AvatarProps> = ({
   size = 64,
   className = '',
 }) => {
+  // Blank/Placeholder style
+  if (style === 'blank') {
+    return (
+      <div
+        className={`rounded-full border-2 border-dashed border-xmas-gold/30 bg-xmas-gold/5 flex items-center justify-center ${className}`}
+        style={{ width: size, height: size }}
+      >
+        <User size={size * 0.4} className="text-xmas-gold/50" />
+      </div>
+    );
+  }
+
   // If we have a generated image, use it
   if (image) {
     return (

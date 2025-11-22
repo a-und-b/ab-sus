@@ -59,30 +59,16 @@ type GuestTab = 'info' | 'list' | 'action';
 const PROGRAM_ENRICHMENT: Record<string, { desc: string; icon: React.ElementType; color: string }> =
   {
     'Glühwein-Empfang': {
-      desc: 'Wir starten gemütlich am Feuer mit heißen Getränken.',
+      desc: 'Heiße Getänke und ein buntes, abwechslungsreiches Buffet zu dem jeder etwas beiträgt.',
       icon: Wine,
       color: 'text-red-500 bg-red-50',
     },
-    'Gemeinsames Buffet': {
-      desc: 'Jeder steuert etwas bei – von Herzhaft bis Süß.',
-      icon: Utensils,
-      color: 'text-amber-500 bg-amber-50',
-    },
-    Fackelwanderung: {
-      desc: 'Ein stimmungsvoller Spaziergang durch die Winternacht.',
-      icon: Flame,
-      color: 'text-orange-500 bg-orange-50',
-    },
-    'Ugly Christmas Sweater Wettbewerb': {
-      desc: 'Zieh dein schrägstes Teil an und gewinne Ruhm & Ehre!',
+    'Optional': {
+      desc: 'Fackelwanderung, Wichteln und ein Ugly Christmas Sweater Wettbewerb mit.  ',
       icon: Snowflake,
       color: 'text-blue-500 bg-blue-50',
     },
-    'Musik & Feuerschale': {
-      desc: 'Ausklang mit guten Gesprächen und Knistern.',
-      icon: Music,
-      color: 'text-purple-500 bg-purple-50',
-    },
+
   };
 
 export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
@@ -96,12 +82,13 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
   // Onboarding State
   const [isOnboarding, setIsOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1); // 1: Avatar/PlusOne, 2: Buffet, 3: Details
+  const [hasTriedNextStep, setHasTriedNextStep] = useState(false);
 
   // Form States
   const [status, setStatus] = useState<Participant['status']>('pending');
 
   // Avatar States
-  const [avatarStyle, setAvatarStyle] = useState<AvatarStyle>('micah');
+  const [avatarStyle, setAvatarStyle] = useState<AvatarStyle>('blank');
   const [avatarSeed, setAvatarSeed] = useState('');
   const [avatarImage, setAvatarImage] = useState<string>(''); // Base64
   const [avatarTab, setAvatarTab] = useState<'manual' | 'ai'>('manual');
@@ -151,6 +138,11 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
     return [...selection, ...cleanCustom].join(', ');
   }, []);
 
+  // Scroll to top when tab changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
   useEffect(() => {
     const loadData = async () => {
       const p = await dataService.getById(id);
@@ -170,7 +162,7 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
           setActiveTab('info');
         }
 
-        setAvatarStyle(p.avatarStyle || 'micah');
+        setAvatarStyle(p.avatarStyle || 'blank');
         setAvatarSeed(p.avatarSeed || p.name);
         setAvatarImage(p.avatarImage || '');
         if (p.avatarImage) {
@@ -385,18 +377,27 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
     buildAllergyString,
   ]);
 
+  // Scroll to top when tab changes
+  useEffect(() => {
+    if (!isOnboarding && status !== 'pending') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [activeTab, isOnboarding, status]);
+
   const handleStartOnboarding = () => {
     setIsOnboarding(true);
     setOnboardingStep(1);
+    setHasTriedNextStep(false);
     // Reset scroll
     window.scrollTo(0, 0);
   };
 
   const handleNextStep = () => {
     if (onboardingStep === 2 && !isBuffetValid()) {
-      alert('Bitte trage ein Gericht ein.');
+      setHasTriedNextStep(true);
       return;
     }
+    setHasTriedNextStep(false);
     setOnboardingStep((prev) => prev + 1);
     window.scrollTo(0, 0);
   };
@@ -470,12 +471,67 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
   };
 
   const downloadIcs = () => {
+    // Parse German date format: "18. Dezember 2025" -> YYYYMMDD
+    const monthMap: Record<string, string> = {
+      januar: '01',
+      februar: '02',
+      märz: '03',
+      maerz: '03', // Alternative spelling
+      april: '04',
+      mai: '05',
+      juni: '06',
+      juli: '07',
+      august: '08',
+      september: '09',
+      oktober: '10',
+      november: '11',
+      dezember: '12',
+    };
+
+    // Improved regex to handle umlauts and various formats
+    // Matches: "18. Dezember 2025" or "18.Dezember 2025" or "18. Dezember2025"
+    const dateMatch = eventConfig.date.match(/(\d{1,2})\.\s*([a-zäöü]+)\s+(\d{4})/i);
+    let dateStr = '';
+    if (dateMatch) {
+      const day = dateMatch[1].padStart(2, '0');
+      const monthName = dateMatch[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Normalize umlauts
+      const year = dateMatch[3];
+      // Try direct match first, then normalized match
+      const month = monthMap[dateMatch[2].toLowerCase()] || monthMap[monthName] || '01';
+      dateStr = `${year}${month}${day}`;
+    } else {
+      // Fallback: try to extract numbers
+      const numbers = eventConfig.date.replace(/[^0-9]/g, '');
+      if (numbers.length >= 8) {
+        dateStr = numbers.slice(-8); // Take last 8 digits
+      } else {
+        dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      }
+    }
+
+    // Parse time format: "17:00 Uhr" -> HHMMSS
+    const timeMatch = eventConfig.time.match(/(\d{1,2}):(\d{2})/);
+    let timeStr = '170000'; // Default
+    if (timeMatch) {
+      const hours = timeMatch[1].padStart(2, '0');
+      const minutes = timeMatch[2].padStart(2, '0');
+      timeStr = `${hours}${minutes}00`;
+    } else {
+      const numbers = eventConfig.time.replace(/[^0-9]/g, '');
+      if (numbers.length >= 4) {
+        timeStr = `${numbers.slice(0, 2)}${numbers.slice(2, 4)}00`;
+      }
+    }
+
+    // Ensure DTSTART is in UTC format (add Z) or use local timezone
+    // For simplicity, we'll use local time without timezone (floating time)
     const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
+PRODID:-//Selbst & Selig//Weihnachtsfeier//DE
 BEGIN:VEVENT
 SUMMARY:${eventConfig.title}
 DESCRIPTION:${eventConfig.subtitle}
-DTSTART:${eventConfig.date.replace(/[^0-9]/g, '')}T${eventConfig.time.replace(/[^0-9]/g, '')}00
+DTSTART:${dateStr}T${timeStr}
 LOCATION:${eventConfig.location}
 END:VEVENT
 END:VCALENDAR`;
@@ -508,15 +564,17 @@ END:VCALENDAR`;
   // --- RENDER SECTIONS ---
 
   const renderAvatarSection = () => (
-    <div className={sectionCardStyle}>
-      <div className="flex justify-between items-start mb-6">
-        <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
-          <div className="bg-xmas-pink/20 p-2 rounded-xl text-xmas-pink">
-            <User size={24} />
-          </div>
-          Dein Profilbild
-        </h3>
-      </div>
+    <div className={isOnboarding ? '' : sectionCardStyle}>
+      {!isOnboarding && (
+        <div className="flex justify-between items-start mb-6">
+          <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
+            <div className="bg-xmas-pink/20 p-2 rounded-xl text-xmas-pink">
+              <User size={24} />
+            </div>
+            Dein Profilbild
+          </h3>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row gap-8 items-center">
         <div className="shrink-0">
           <Avatar
@@ -533,13 +591,13 @@ END:VCALENDAR`;
               onClick={() => setAvatarTab('manual')}
               className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${avatarTab === 'manual' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500 hover:text-stone-700'}`}
             >
-              🎨 Designen
+              🎨 Vorlage
             </button>
             <button
               onClick={() => setAvatarTab('ai')}
               className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${avatarTab === 'ai' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500 hover:text-stone-700'}`}
             >
-              ✨ AI Magic
+              ✨ KI-Generierung
             </button>
           </div>
           {avatarTab === 'manual' ? (
@@ -591,7 +649,6 @@ END:VCALENDAR`;
                   )}
                 </button>
               </form>
-              <p className="text-[10px] text-stone-400 pl-1">Generiert ein Bild im 3D-Knet-Look.</p>
             </div>
           )}
         </div>
@@ -603,7 +660,7 @@ END:VCALENDAR`;
     if (!eventConfig.allowPlusOne) return null;
 
     return (
-      <div className={sectionCardStyle}>
+      <div className={isOnboarding ? 'mt-8' : sectionCardStyle}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
             <div className="bg-xmas-red/10 p-2 rounded-xl text-xmas-red">
@@ -639,44 +696,25 @@ END:VCALENDAR`;
 
   const renderBuffetSection = () => (
     <div
-      className={`${sectionCardStyle} ${!foodName || foodName.trim().length === 0 ? 'ring-2 ring-red-200' : ''}`}
+      className={`${isOnboarding ? '' : sectionCardStyle} ${hasTriedNextStep && (!foodName || foodName.trim().length === 0) ? 'ring-2 ring-red-200' : ''}`}
     >
-      <h3 className="font-serif text-2xl text-xmas-dark mb-6 flex items-center gap-3">
-        <div className="bg-xmas-gold/20 p-2 rounded-xl text-xmas-gold">
-          <Utensils size={24} />
-        </div>
-        Dein Beitrag zum Buffet *
-      </h3>
-      <p className="text-sm text-stone-500 mb-6 bg-stone-50 p-4 rounded-xl border border-stone-100">
-        Jeder bringt eine Kleinigkeit für ca. 6-8 Personen mit. So entsteht ein buntes Buffet!
-      </p>
       <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <label className={`${labelStyle} block mb-2`}>Kategorie</label>
-            <select
-              value={foodCategory}
-              onChange={(e) => setFoodCategory(e.target.value as FoodCategory)}
-              className={inputStyle}
-            >
-              {Object.values(FoodCategory).map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={`${labelStyle} block mb-2`}>Notiz</label>
-            <input
-              type="text"
-              value={foodDesc}
-              onChange={(e) => setFoodDesc(e.target.value)}
-              placeholder="z.B. Kühlkette nötig"
-              className={inputStyle}
-            />
-          </div>
+        {/* 1. Kategorie (Category) */}
+        <div>
+          <label className={`${labelStyle} block mb-2`}>Kategorie</label>
+          <select
+            value={foodCategory}
+            onChange={(e) => setFoodCategory(e.target.value as FoodCategory)}
+            className={inputStyle}
+          >
+            {Object.values(FoodCategory).map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </div>
+        {/* 1. Inspiration */}
         {getAvailableInspirations().length > 0 && (
           <div className="animate-fade-in">
             <div className="flex items-center gap-2 mb-3">
@@ -698,6 +736,7 @@ END:VCALENDAR`;
             </div>
           </div>
         )}
+        {/* 2. Gericht (Dish Name) */}
         <div>
           <label className={`${labelStyle} block mb-2`}>
             Gericht <span className="text-red-500">*</span>
@@ -707,15 +746,16 @@ END:VCALENDAR`;
             value={foodName}
             onChange={(e) => setFoodName(e.target.value)}
             placeholder="z.B. Nudelsalat, Tiramisu..."
-            className={`${inputStyle} ${!foodName && 'border-red-300 bg-red-50/20'}`}
+            className={`${inputStyle} ${hasTriedNextStep && !foodName && 'border-red-300 bg-red-50/20'}`}
             required
           />
-          {!foodName && (
+          {hasTriedNextStep && !foodName && (
             <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1">
               <AlertCircle size={12} /> Pflichtfeld: Bitte Gericht eintragen.
             </p>
           )}
         </div>
+        {/* 3. Eigenschaften (Properties) */}
         <div>
           <span className={`${labelStyle} block mb-3`}>Eigenschaften</span>
           <div className="flex flex-wrap gap-2">
@@ -741,18 +781,31 @@ END:VCALENDAR`;
             ))}
           </div>
         </div>
+        {/* 5. Notiz (Note) */}
+        <div>
+          <label className={`${labelStyle} block mb-2`}>Notiz</label>
+          <input
+            type="text"
+            value={foodDesc}
+            onChange={(e) => setFoodDesc(e.target.value)}
+            placeholder="z.B. Kühlkette nötig"
+            className={inputStyle}
+          />
+        </div>
       </div>
     </div>
   );
 
   const renderDetailsSection = () => (
-    <div className={sectionCardStyle}>
-      <h3 className="font-serif text-2xl text-xmas-dark mb-6 flex items-center gap-3">
-        <div className="bg-emerald-50 p-2 rounded-xl text-emerald-600">
-          <Sparkles size={24} />
-        </div>
-        Details & Wünsche
-      </h3>
+    <div className={isOnboarding ? '' : sectionCardStyle}>
+      {!isOnboarding && (
+        <h3 className="font-serif text-2xl text-xmas-dark mb-6 flex items-center gap-3">
+          <div className="bg-emerald-50 p-2 rounded-xl text-emerald-600">
+            <Sparkles size={24} />
+          </div>
+          Details & Wünsche
+        </h3>
+      )}
       <div className="space-y-8">
         <div>
           <label className={`${labelStyle} mb-2 flex items-center gap-2`}>
@@ -813,8 +866,12 @@ END:VCALENDAR`;
           </div>
           <div className="flex-grow">
             <p className="font-bold text-stone-800 text-sm">
-              Wichteln (max {eventConfig.secretSantaLimit}€)
+              Wichteln?
             </p>
+            <p className="text-xs text-stone-500 mt-1">
+            Machst du beim Wichteln mit? Dann wird dir ein anderer Gast zugelost und du beschenkst 
+            ihn oder sie mit einem kleinen Geschenk <strong>im Wert von maximal {eventConfig.secretSantaLimit}€</strong>. 
+            </p>            
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -828,55 +885,7 @@ END:VCALENDAR`;
             ></div>
           </label>
         </div>
-        <div>
-          <label className={`${labelStyle} mb-3 flex items-center gap-2`}>
-            <Eye size={16} className="text-stone-500" /> Sichtbarkeit
-          </label>
-          <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <div
-                className={`w-10 h-6 rounded-full relative transition-colors shrink-0 ${showNameInBuffet ? 'bg-stone-800' : 'bg-stone-300'}`}
-              >
-                <input
-                  type="checkbox"
-                  className="hidden"
-                  checked={showNameInBuffet}
-                  onChange={(e) => setShowNameInBuffet(e.target.checked)}
-                />
-                <div
-                  className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${showNameInBuffet ? 'left-5' : 'left-1'}`}
-                ></div>
-              </div>
-              <div className="flex-grow">
-                <span className="text-sm font-bold text-stone-700 block">Öffentliche Anzeige</span>
-                <span className="text-xs text-stone-500 block">
-                  Meinen Namen auf der Event-Seite anzeigen (Gästeliste & Buffet).
-                </span>
-              </div>
-            </label>
-          </div>
-        </div>
-        <div>
-          <label className={`${labelStyle} mb-3 flex items-center gap-2`}>
-            <Wallet size={16} className="text-stone-500" /> Unkostenbeitrag ({eventConfig.cost}):
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl hover:bg-stone-50 border border-transparent hover:border-stone-100 transition-all">
-            <div
-              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${wantsInvoice ? 'bg-stone-800 border-stone-800' : 'bg-white border-stone-300'}`}
-            >
-              {wantsInvoice && <CheckCircle2 size={14} className="text-white" />}
-            </div>
-            <input
-              type="checkbox"
-              className="hidden"
-              checked={wantsInvoice}
-              onChange={(e) => setWantsInvoice(e.target.checked)}
-            />
-            <span className="text-sm text-stone-700">
-              Ich benötige eine Rechnung (für Überweisung)
-            </span>
-          </label>
-        </div>
+        {/* Aktiv einbringen - moved to be right after Wichteln */}
         <div>
           <label className={`${labelStyle} mb-2 flex items-center gap-2`}>
             <Mic2 size={16} className="text-stone-500" /> Ich möchte mich aktiv einbringen:
@@ -891,6 +900,67 @@ END:VCALENDAR`;
             rows={2}
             className={inputStyle}
           />
+        </div>
+        {/* Unkostenbeitrag - improved styling to match Wichteln card */}
+        <div
+          className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${wantsInvoice ? 'bg-amber-50 border-xmas-gold shadow-sm' : 'bg-stone-50 border-stone-100'}`}
+        >
+          <div
+            className={`p-2 rounded-full ${wantsInvoice ? 'bg-xmas-gold text-white' : 'bg-white text-stone-300'}`}
+          >
+            <Wallet size={20} />
+          </div>
+          <div className="flex-grow">
+            <p className="font-bold text-stone-800 text-sm">
+              Rechnung benötigt? 
+            </p>
+            <p className="text-xs text-stone-500 mt-1">
+            Den Unkostenbeitrag von {eventConfig.cost} bitte passend mitbringen.
+            </p>
+          </div>
+          <div className="flex flex-col items-end">
+             <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={wantsInvoice}
+                onChange={(e) => setWantsInvoice(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div
+                className={`w-10 h-6 rounded-full peer peer-focus:outline-none transition-all ${wantsInvoice ? 'bg-xmas-gold' : 'bg-stone-200'} peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all`}
+              ></div>
+            </label>
+          </div>
+        </div>
+
+        {/* Sichtbarkeit - styled like Wichteln and Rechnung */}
+        <div
+          className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${!showNameInBuffet ? 'bg-amber-50 border-xmas-gold shadow-sm' : 'bg-stone-50 border-stone-100'}`}
+        >
+          <div
+            className={`p-2 rounded-full ${!showNameInBuffet ? 'bg-xmas-gold text-white' : 'bg-white text-stone-300'}`}
+          >
+            <Eye size={20} />
+          </div>
+          <div className="flex-grow">
+            <p className="font-bold text-stone-800 text-sm">
+              Name ausblenden?
+            </p>
+            <p className="text-xs text-stone-500 mt-1">
+              Aktivieren, um deinen Namen auf der Event-Seite zu verbergen (Gästeliste & Buffet).
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!showNameInBuffet}
+              onChange={(e) => setShowNameInBuffet(!e.target.checked)}
+              className="sr-only peer"
+            />
+            <div
+              className={`w-10 h-6 rounded-full peer peer-focus:outline-none transition-all ${!showNameInBuffet ? 'bg-xmas-gold' : 'bg-stone-200'} peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all`}
+            ></div>
+          </label>
         </div>
       </div>
     </div>
@@ -921,29 +991,41 @@ END:VCALENDAR`;
   // --- ONBOARDING WIZARD RENDER ---
   if (isOnboarding) {
     return (
-      <div className="fixed inset-0 z-50 bg-xmas-cream flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl border border-white p-8">
-          {/* Progress Bar */}
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="font-serif text-2xl font-bold text-stone-800">
-              {onboardingStep === 1 && 'Dein Profil'}
-              {onboardingStep === 2 && 'Dein Buffet-Beitrag'}
-              {onboardingStep === 3 && 'Details & Abschluss'}
-            </h2>
-            <div className="flex gap-2">
-              {[1, 2, 3].map((step) => (
-                <div
-                  key={step}
-                  className={`h-2 w-8 rounded-full transition-all ${step <= onboardingStep ? 'bg-xmas-gold' : 'bg-stone-200'}`}
-                ></div>
-              ))}
-            </div>
-          </div>
-
-          <div className="animate-fade-in space-y-6">
+      <div className="fixed inset-0 z-50 bg-xmas-cream flex flex-col items-center justify-start pt-12 md:pt-24 p-4 overflow-y-auto">
+        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl border border-white overflow-hidden">
+          {/* Header */}
+          <div className="p-6 border-b border-stone-100 bg-stone-50/50">
             {onboardingStep === 1 && (
               <>
-                <p className="text-stone-500">Lass uns kurz dein Profil einrichten.</p>
+                <h3 className="font-serif font-bold text-xmas-dark text-xl flex items-center gap-2">
+                  <User className="text-xmas-pink" size={24} /> Hallo {participant.name.split(' ')[0]}!
+                </h3>
+                <p className="text-sm text-stone-500 mt-1">Lass uns kurz dein Profil einrichten.</p>
+              </>
+            )}
+            {onboardingStep === 2 && (
+              <>
+                <h3 className="font-serif font-bold text-xmas-dark text-xl flex items-center gap-2">
+                  <Utensils className="text-xmas-gold" size={24} /> Dein Beitrag zum Buffet
+                </h3>
+                <p className="text-sm text-stone-500 mt-1">
+                Jeder bringt eine Kleinigkeit für ca. 6 Personen mit. So entsteht ein buntes Buffet!
+                </p>
+              </>
+            )}
+            {onboardingStep === 3 && (
+              <>
+                <h3 className="font-serif font-bold text-xmas-dark text-xl flex items-center gap-2">
+                  <Sparkles className="text-emerald-600" size={24} /> Details & Abschluss, {participant.name.split(' ')[0]}
+                </h3>
+                <p className="text-sm text-stone-500 mt-1">Fast fertig! Nur noch ein paar Details.</p>
+              </>
+            )}
+          </div>
+
+          <div className="p-8 animate-fade-in space-y-6">
+            {onboardingStep === 1 && (
+              <>
                 {renderAvatarSection()}
                 {renderPlusOneSection()}
                 <div className="flex justify-end pt-4">
@@ -959,9 +1041,6 @@ END:VCALENDAR`;
 
             {onboardingStep === 2 && (
               <>
-                <p className="text-stone-500">
-                  Das Wichtigste zuerst: Was steuerst du zum Buffet bei?
-                </p>
                 {renderBuffetSection()}
                 <div className="flex justify-between pt-4">
                   <button
@@ -983,7 +1062,6 @@ END:VCALENDAR`;
 
             {onboardingStep === 3 && (
               <>
-                <p className="text-stone-500">Fast fertig! Nur noch ein paar Details.</p>
                 {renderDetailsSection()}
                 <div className="flex justify-between pt-4 items-center">
                   <button
@@ -1002,6 +1080,16 @@ END:VCALENDAR`;
               </>
             )}
           </div>
+        </div>
+        
+        {/* Progress Indicator - Centered at bottom */}
+        <div className="flex justify-center gap-2 mt-8">
+          {[1, 2, 3].map((step) => (
+            <div
+              key={step}
+              className={`h-2 w-8 rounded-full transition-all ${step <= onboardingStep ? 'bg-xmas-gold' : 'bg-white/50'}`}
+            ></div>
+          ))}
         </div>
       </div>
     );
@@ -1044,11 +1132,9 @@ END:VCALENDAR`;
               Hallo {participant.name.split(' ')[0]}!
             </h2>
             <p className="text-stone-800 text-lg max-w-2xl mx-auto leading-relaxed">
-              Happy (almost) Holidays! Mit Vergnügen schauen wir den festlichen Tagen entgegen.
-              Weihnachtsfeiern sind eigentlich eine reine Office-Sache, aber das wollen wir ändern!
-            </p>
-            <p className="text-stone-600 text-lg max-w-2xl mx-auto leading-relaxed">
-              Wir freuen uns auf eine entspannte, festliche Runde unter Selbstständigen-Kollegen.
+            Happy (almost) holidays!<br />
+            Das einzige, was wir als Solo-Selbstständige am Angestellten-Dasein vermissen, sind die Weihnachtsfeiern. Ab diesem Jahr wollen wir das ändern. Die Grundidee ist einfach: Wir laden interessante Menschen ein, jeder bringt eine Kleinigkeit zum Essen mit, und wir kümmern uns um den Rest.<br />
+            Wir freuen uns auf eine entspannte, festliche Runde!
             </p>
           </div>
 
@@ -1117,25 +1203,6 @@ END:VCALENDAR`;
                   Wann & Wo?
                 </h3>
                 <div className="space-y-4 flex-grow">
-                  <div className="bg-stone-100 text-stone-800 p-4 rounded-2xl border border-stone-200 flex items-center gap-4 shadow-inner">
-                    <div className="bg-white shadow-sm p-2 rounded-xl">
-                      <Users size={24} className="text-xmas-gold" />
-                    </div>
-                    <div className="flex-grow">
-                      <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-stone-500 mb-1">
-                        <span>Gästeliste</span>
-                        <span>
-                          {totalAttending} / {eventConfig.maxGuests}
-                        </span>
-                      </div>
-                      <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-xmas-gold transition-all duration-1000"
-                          style={{ width: `${percentageFull}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
                   <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex items-start gap-3">
                     <Calendar className="text-stone-600 shrink-0 mt-1" size={20} />
                     <div>
@@ -1147,13 +1214,32 @@ END:VCALENDAR`;
                     <MapPin className="text-stone-600 shrink-0 mt-1" size={20} />
                     <div>
                       <p className="font-bold text-stone-800">{eventConfig.location}</p>
+                      <p className="text-stone-500 text-sm">Alter Peller-Hof</p>
+                    </div>
+                  </div>
+                  <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex items-start gap-3">
+                    <Users size={24} className="text-stone-600 shrink-0 mt-1" />
+                    <div>
+                      <p className="font-bold text-stone-800">
+                        {eventConfig.maxGuests - totalAttending} / {eventConfig.maxGuests}
+                      </p>
+                      <p className="text-stone-500 text-sm">Plätze verfügbar</p>
                     </div>
                   </div>
                   {eventConfig.cost && (
-                    <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-start gap-3">
+                  <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex items-start gap-3">
                       <Euro className="text-amber-600 shrink-0 mt-1" size={20} />
-                      <div>
-                        <p className="font-bold text-amber-900">Unkostenbeitrag</p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-amber-900">Unkostenbeitrag</p>
+                          <div className="relative group">
+                            <Info className="text-amber-600 cursor-help" size={16} />
+                            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-stone-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-10 shadow-lg">
+                              <p className="text-center">Bitte passend zur Veranstaltung mitbringen. Dieser Betrag deckt die Kosten für Getränke, Location und Organisation.</p>
+                              <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-stone-800"></div>
+                            </div>
+                          </div>
+                        </div>
                         <p className="text-amber-800/80 text-sm">{eventConfig.cost}</p>
                       </div>
                     </div>
@@ -1283,9 +1369,6 @@ END:VCALENDAR`;
                   >
                     <XCircle size={24} className="opacity-80" />
                     <span className="text-lg">Kann leider nicht</span>
-                    <span className="text-xs opacity-80 font-normal">
-                      Änderung möglich bis {deadlineDateStr}
-                    </span>
                   </button>
 
                   {/* MAYBE */}
@@ -1295,12 +1378,13 @@ END:VCALENDAR`;
                   >
                     <HelpCircle size={24} className="opacity-60" />
                     <span className="text-lg">Weiß noch nicht</span>
-                    <span className="text-xs opacity-60 font-normal">
-                      Änderung möglich bis {deadlineDateStr}
-                    </span>
+
                   </button>
                 </div>
               )}
+                                  <span className="text-xs opacity-80 font-normal">
+                      Änderung möglich bis {deadlineDateStr}
+                    </span>
             </div>
           ) : (
             /* Status Card for responded users */
@@ -1316,10 +1400,10 @@ END:VCALENDAR`;
                 <div>
                   <p className="font-serif font-bold text-xl">
                     {status === 'attending'
-                      ? 'Du bist angemeldet!'
+                      ? `Hallo ${participant.name.split(' ')[0]}, du bist angemeldet!`
                       : status === 'declined'
-                        ? 'Schade, dass du nicht kannst.'
-                        : 'Du bist noch unentschlossen.'}
+                        ? `Hallo ${participant.name.split(' ')[0]}, schade, dass du nicht kannst.`
+                        : `Hallo ${participant.name.split(' ')[0]}, du bist noch unentschlossen.`}
                   </p>
                   <p className="text-white/80 text-sm">
                     {status === 'attending'

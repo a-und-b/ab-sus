@@ -158,3 +158,4 @@ Remove demo links from:
 Your app is now production-ready! All core functionality is implemented and deployed. Just add your API keys (GEMINI_API_KEY, RESEND_API_KEY) to Supabase secrets and create an admin user to start using it for your real event.
 
 **Congratulations! 🎄**
+

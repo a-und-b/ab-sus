@@ -64,6 +64,7 @@ export const AVATAR_STYLES = {
   avataaars: 'Comic',
   bottts: 'Roboter',
   shapes: 'Abstrakt',
+  blank: 'Leer',
 };
 
 export type AvatarStyle = keyof typeof AVATAR_STYLES;

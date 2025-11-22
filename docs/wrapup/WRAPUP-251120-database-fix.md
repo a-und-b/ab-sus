@@ -153,3 +153,4 @@ Remove or comment out the Supabase initialization logs in `services/supabase.ts`
 ---
 
 **Sprint completed successfully!** The app is now ready for production email sending with the correct verified domain.
+

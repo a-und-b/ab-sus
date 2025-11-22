@@ -64,3 +64,4 @@ Try opening the site on your **Mobile Phone** (disconnect from Wi-Fi, use 4G/5G)
 
 **Summary:**
 Please double-check **Step 1** (Vercel Env Vars) carefully. It is the most common cause of production fetch failures when code works locally.
+
