@@ -1066,63 +1066,6 @@ END:VCALENDAR`;
     );
   };
 
-  const renderDetailsSection = () => (
-    <div className={isOnboarding ? '' : sectionCardStyle}>
-      {!isOnboarding && (
-        <div className={cardHeaderStyle}>
-          <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
-            <div className="bg-emerald-50 p-2 rounded-xl text-emerald-600">
-              <Sparkles size={24} />
-            </div>
-            Details & Wünsche
-          </h3>
-        </div>
-      )}
-      <div className={`${isOnboarding ? '' : cardContentStyle} space-y-8`}>
-        {/* Aktiv einbringen */}
-        <div>
-          <label className={`${labelStyle} mb-2 flex items-center gap-2`}>
-            <Mic2 size={16} className="text-stone-500" /> Ich möchte mich aktiv einbringen:
-          </label>
-          {(eventConfig.contributionSuggestions || []).length > 0 && (
-            <div className="mb-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Lightbulb size={14} className="text-xmas-gold" />
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wide">
-                  Vorschläge
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {(eventConfig.contributionSuggestions || []).map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() => {
-                      if (contribution.trim()) {
-                        setContribution(`${contribution}, ${suggestion}`);
-                      } else {
-                        setContribution(suggestion);
-                      }
-                    }}
-                    className="text-xs bg-stone-50 hover:bg-white hover:shadow-sm border border-stone-200 text-stone-600 px-3 py-1.5 rounded-lg transition-all active:scale-95"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          <textarea
-            value={contribution}
-            onChange={(e) => setContribution(e.target.value)}
-            placeholder="Dein Beitrag..."
-            rows={2}
-            className={inputStyle}
-          />
-        </div>
-      </div>
-    </div>
-  );
 
   if (loading) {
     return (
@@ -1757,7 +1700,6 @@ END:VCALENDAR`;
               {renderPlusOneSection()}
               {renderBuffetSection()}
               {renderVotingSection()}
-              {renderDetailsSection()}
 
               {/* Manual Save Button */}
               <div className="sticky bottom-4 z-30">
