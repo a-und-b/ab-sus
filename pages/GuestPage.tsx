@@ -46,6 +46,7 @@ import {
   Phone,
 } from 'lucide-react';
 import { supabase as supabaseClient } from '../services/supabase';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface GuestPageProps {
   id: string;
@@ -1291,131 +1292,6 @@ END:VCALENDAR`;
                 </div>
               )}
 
-              {/* Live Activity Ranking */}
-              {(() => {
-                const activeActivities = (eventConfig.activities || []).filter((a) => a.isActive);
-                if (activeActivities.length === 0) return null;
-
-                // Calculate vote counts
-                const voteCounts: Record<string, number> = {};
-                activeActivities.forEach((activity) => {
-                  voteCounts[activity.id] = 0;
-                });
-
-                allParticipants.forEach((p) => {
-                  if (p.status === 'attending' && p.activityVotes) {
-                    p.activityVotes.forEach((activityId) => {
-                      if (voteCounts[activityId] !== undefined) {
-                        voteCounts[activityId]++;
-                      }
-                    });
-                  }
-                });
-
-                // Sort activities by vote count (descending)
-                const rankedActivities = [...activeActivities]
-                  .map((activity) => ({
-                    ...activity,
-                    voteCount: voteCounts[activity.id] || 0,
-                  }))
-                  .sort((a, b) => b.voteCount - a.voteCount);
-
-                const totalVotes = Object.values(voteCounts).reduce((sum, count) => sum + count, 0);
-
-                if (totalVotes === 0) return null; // Don't show if no votes yet
-
-                return (
-                  <div className={sectionCardStyle}>
-                    <div className={cardHeaderStyle}>
-                      <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
-                        <div className="bg-blue-50 p-2 rounded-xl text-blue-600">
-                          <Sparkles size={24} />
-                        </div>
-                        Eure Wünsche
-                      </h3>
-                    </div>
-                    <div className={cardContentStyle}>
-                      <p className="text-stone-600 text-sm mb-4">
-                        Live-Ranking der Aktivitäten basierend auf euren Abstimmungen
-                      </p>
-                      <div className="space-y-4">
-                        {rankedActivities.map((activity, index) => {
-                          const percentage = totalVotes > 0 ? (activity.voteCount / totalVotes) * 100 : 0;
-                          const isTopThree = index < 3;
-                          return (
-                            <div
-                              key={activity.id}
-                              className={`p-4 rounded-xl border-2 transition-all ${
-                                isTopThree
-                                  ? 'bg-blue-50 border-blue-200 shadow-sm'
-                                  : 'bg-stone-50 border-stone-200'
-                              }`}
-                            >
-                              <div className="flex items-center gap-4 mb-3">
-                                <div
-                                  className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm ${
-                                    isTopThree
-                                      ? 'bg-blue-500 text-white'
-                                      : 'bg-stone-300 text-stone-600'
-                                  }`}
-                                >
-                                  {index + 1}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className={`font-bold text-lg truncate ${isTopThree ? 'text-blue-900' : 'text-stone-800'}`}>
-                                    {activity.title}
-                                  </p>
-                                </div>
-
-                                {/* Vote Count & Info */}
-                                <div className="flex items-center gap-3 shrink-0">
-                                   <div className="text-right">
-                                      <span className={`font-bold text-lg ${isTopThree ? 'text-blue-600' : 'text-stone-600'}`}>
-                                        {activity.voteCount}
-                                      </span>
-                                      <span className="text-xs text-stone-400 ml-1">
-                                        {activity.voteCount === 1 ? 'Stimme' : 'Stimmen'}
-                                      </span>
-                                   </div>
-
-                                   {activity.description && (
-                                      <div className="relative group shrink-0">
-                                        <Info className="text-stone-600 cursor-help" size={16} />
-                                        <div className="absolute right-0 bottom-full mb-2 w-48 p-2 bg-stone-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-10 shadow-lg">
-                                          <p className="text-center">{activity.description}</p>
-                                          <div className="absolute right-4 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-stone-800"></div>
-                                        </div>
-                                      </div>
-                                   )}
-                                </div>
-                              </div>
-
-                              {/* Progress Bar */}
-                              <div className="relative h-2.5 bg-stone-200 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full transition-all duration-1000 ease-out rounded-full ${
-                                    isTopThree ? 'bg-blue-500' : 'bg-stone-400'
-                                  }`}
-                                  style={{ width: `${percentage}%` }}
-                                ></div>
-                              </div>
-                              <div className="flex justify-between mt-1 px-1">
-                                <span className="text-xs text-stone-400">
-                                  {percentage.toFixed(0)}% der Stimmen
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <p className="text-xs text-stone-400 mt-4 italic text-center">
-                        {totalVotes} {totalVotes === 1 ? 'Stimme' : 'Stimmen'} insgesamt
-                      </p>
-                    </div>
-                  </div>
-                );
-              })()}
-
               {/* Slider */}
               <LocationSlider />
             </div>
@@ -1523,6 +1399,103 @@ END:VCALENDAR`;
                   className="grayscale-[20%] contrast-[1.1]"
                 ></iframe>
               </div>
+            </div>
+            
+            {/* Live Activity Ranking - Spanning Both Columns */}
+            <div className="md:col-span-2">
+              {(() => {
+                const activeActivities = (eventConfig.activities || []).filter((a) => a.isActive);
+                if (activeActivities.length === 0) return null;
+
+                // Calculate vote counts
+                const voteCounts: Record<string, number> = {};
+                activeActivities.forEach((activity) => {
+                  voteCounts[activity.id] = 0;
+                });
+
+                allParticipants.forEach((p) => {
+                  if (p.status === 'attending' && p.activityVotes) {
+                    p.activityVotes.forEach((activityId) => {
+                      if (voteCounts[activityId] !== undefined) {
+                        voteCounts[activityId]++;
+                      }
+                    });
+                  }
+                });
+
+                // Sort activities by vote count (descending)
+                const rankedActivities = [...activeActivities]
+                  .map((activity) => ({
+                    ...activity,
+                    voteCount: voteCounts[activity.id] || 0,
+                  }))
+                  .sort((a, b) => b.voteCount - a.voteCount);
+
+                const totalVotes = Object.values(voteCounts).reduce((sum, count) => sum + count, 0);
+
+                if (totalVotes === 0) return null;
+
+                // Color palette for different bars
+                const colors = ['#778D45', '#C44536', '#D4AF37', '#3b82f6', '#a855f7', '#f97316', '#06b6d4', '#64748b'];
+
+                // Prepare Chart Data
+                const chartData = rankedActivities.map((activity, index) => ({
+                   name: activity.title,
+                   value: activity.voteCount,
+                   color: colors[index % colors.length]
+                }));
+
+                return (
+                  <div className={sectionCardStyle}>
+                    <div className={cardHeaderStyle}>
+                      <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
+                        <div className="bg-blue-50 p-2 rounded-xl text-blue-600">
+                          <Sparkles size={24} />
+                        </div>
+                        Eure Wünsche
+                      </h3>
+                    </div>
+                    <div className={cardContentStyle}>
+                      <div className="h-56 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} layout="vertical">
+                          <XAxis
+                            type="number"
+                            stroke="#d6d3d1"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            allowDecimals={false}
+                          />
+                          <YAxis
+                            type="category"
+                            dataKey="name"
+                            stroke="#d6d3d1"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            width={150}
+                          />
+                          <Tooltip
+                            cursor={{ fill: '#f5f5f4' }}
+                            contentStyle={{
+                              borderRadius: '12px',
+                              border: 'none',
+                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                            }}
+                          />
+                          <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                            {chartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
