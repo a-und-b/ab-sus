@@ -898,11 +898,12 @@ END:VCALENDAR`;
           <span className={`${labelStyle} block mb-3`}>Eigenschaften</span>
           <div className="flex flex-wrap gap-2">
             {[
+              { key: 'isVegetarian', label: 'Vegetarisch', icon: '🥦' },
               { key: 'isVegan', label: 'Vegan', icon: '🌱' },
               { key: 'isGlutenFree', label: 'Glutenfrei', icon: '🌾' },
               { key: 'isLactoseFree', label: 'Laktosefrei', icon: '🥛' },
-              { key: 'containsAlcohol', label: 'Alkohol', icon: '🍷' },
-              { key: 'containsNuts', label: 'Nüsse', icon: '🥜' },
+              { key: 'containsAlcohol', label: 'Enthält Alkohol', icon: '🍷' },
+              { key: 'containsNuts', label: 'Enthält Nüsse', icon: '🥜' },
             ].map((tag) => (
               <label
                 key={tag.key}
