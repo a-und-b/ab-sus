@@ -1,19 +1,21 @@
 import React from 'react';
-import { Participant, FoodCategory, BUFFET_INSPIRATIONS } from '../types';
+import { Participant, EventConfig } from '../types';
 import { Leaf, WheatOff, MilkOff, Wine, Nut, ChefHat } from 'lucide-react';
 import { Avatar } from './Avatar';
 
 interface FoodDisplayProps {
   participants: Participant[];
+  config: EventConfig;
 }
 
-export const FoodDisplay: React.FC<FoodDisplayProps> = ({ participants }) => {
+export const FoodDisplay: React.FC<FoodDisplayProps> = ({ participants, config }) => {
   // 1. Get all taken dish names to filter suggestions
   const takenDishNames = participants
     .filter((p) => p.food?.name)
     .map((p) => p.food!.name.trim().toLowerCase());
 
-  const groupedFood = Object.values(FoodCategory).map((category) => {
+  const groupedFood = (config.buffetConfig || []).map((categoryConfig) => {
+    const category = categoryConfig.label;
     // Real items from guests
     const realItems = participants.filter(
       (p) =>
@@ -24,7 +26,7 @@ export const FoodDisplay: React.FC<FoodDisplayProps> = ({ participants }) => {
     );
 
     // Suggestions calculation kept for logic consistency but not rendered in list anymore
-    const suggestions = (BUFFET_INSPIRATIONS[category] || []).filter((suggestion) => {
+    const suggestions = (categoryConfig.inspirations || []).filter((suggestion) => {
       return !takenDishNames.includes(suggestion.toLowerCase());
     });
 

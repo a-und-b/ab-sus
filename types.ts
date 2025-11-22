@@ -1,3 +1,5 @@
+import { LucideIcon } from 'lucide-react';
+
 export type RSVPStatus = 'attending' | 'declined' | 'maybe' | 'pending';
 
 export enum FoodCategory {
@@ -71,7 +73,7 @@ export type AvatarStyle = keyof typeof AVATAR_STYLES;
 
 export interface FoodItem {
   name: string;
-  category: FoodCategory;
+  category: string;
   description?: string;
   isVegan: boolean;
   isGlutenFree: boolean;
@@ -108,6 +110,13 @@ export interface ProgramItem {
   color: string; // Tailwind color classes (e.g., 'text-red-500 bg-red-50')
 }
 
+export interface BuffetCategoryConfig {
+  id: string;
+  label: string;
+  isActive: boolean;
+  inspirations: string[];
+}
+
 export interface EventConfig {
   title: string;
   subtitle: string;
@@ -121,6 +130,7 @@ export interface EventConfig {
   cost: string; // e.g. "25 € pro Person"
   hosts: string; // e.g. "Holger, Daniela..."
   program: ProgramItem[]; // Structured program highlights
+  buffetConfig: BuffetCategoryConfig[]; // New: Dynamic buffet configuration
   contactEmail: string;
   contactPhone?: string; // Optional contact phone number
   rsvpDeadline: string; // ISO Date String YYYY-MM-DD
@@ -180,6 +190,38 @@ export const DEFAULT_EVENT_CONFIG: EventConfig = {
       description: 'Ausklang mit guten Gesprächen und Knistern.',
       icon: 'Music',
       color: 'text-purple-500 bg-purple-50',
+    },
+  ],
+  buffetConfig: [
+    {
+      id: 'appetizer',
+      label: FoodCategory.APPETIZER,
+      isActive: true,
+      inspirations: BUFFET_INSPIRATIONS[FoodCategory.APPETIZER],
+    },
+    {
+      id: 'main',
+      label: FoodCategory.MAIN,
+      isActive: true,
+      inspirations: BUFFET_INSPIRATIONS[FoodCategory.MAIN],
+    },
+    {
+      id: 'side',
+      label: FoodCategory.SIDE,
+      isActive: true,
+      inspirations: BUFFET_INSPIRATIONS[FoodCategory.SIDE],
+    },
+    {
+      id: 'dessert',
+      label: FoodCategory.DESSERT,
+      isActive: true,
+      inspirations: BUFFET_INSPIRATIONS[FoodCategory.DESSERT],
+    },
+    {
+      id: 'drink',
+      label: FoodCategory.DRINK,
+      isActive: true,
+      inspirations: BUFFET_INSPIRATIONS[FoodCategory.DRINK],
     },
   ],
   contactEmail: 'info@selbst-und-selig.de',
@@ -304,241 +346,5 @@ Wir hoffen, du bist gut nach Hause gekommen und hast die Feiertage nun entspannt
 
 Frohe Weihnachten!
 {{hosts}}`,
-  },
-];
-
-export const INITIAL_PARTICIPANTS: Participant[] = [
-  {
-    id: 'a3f7k9m2',
-    name: 'Anna Musterfrau',
-    email: 'anna@example.com',
-    status: 'attending',
-    avatarStyle: 'adventurer',
-    avatarSeed: 'Anna',
-    food: {
-      name: 'Kartoffelsalat',
-      category: FoodCategory.SIDE,
-      isVegan: true,
-      isGlutenFree: true,
-      isLactoseFree: true,
-      containsAlcohol: false,
-      containsNuts: false,
-    },
-    showNameInBuffet: true,
-    isSecretSanta: true,
-    wantsInvoice: false,
-    contribution: 'Ich bringe Knabberzeug mit',
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'b8x2l1p9',
-    name: 'Markus Beispiel',
-    email: 'markus@example.com',
-    status: 'pending',
-    avatarStyle: 'micah',
-    avatarSeed: 'Markus',
-    isSecretSanta: false,
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'c4m5q8r3',
-    name: 'Julia Design',
-    email: 'julia@example.com',
-    status: 'attending',
-    avatarStyle: 'notionists',
-    avatarSeed: 'Julia',
-    plusOne: 'Thomas',
-    plusOneAllergies: 'Erdnüsse',
-    food: {
-      name: 'Tiramisu',
-      category: FoodCategory.DESSERT,
-      isVegan: false,
-      isGlutenFree: false,
-      isLactoseFree: false,
-      containsAlcohol: true,
-      containsNuts: false,
-    },
-    allergies: 'Haselnüsse',
-    showNameInBuffet: true,
-    isSecretSanta: true,
-    wantsInvoice: true,
-    contribution: 'Fotografieren',
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'd5n6t9u1',
-    name: 'Sabine Müller',
-    email: 'sabine@example.com',
-    status: 'attending',
-    avatarStyle: 'bottts',
-    avatarSeed: 'Sabine',
-    food: {
-      name: 'Gemüsesticks mit Hummus',
-      category: FoodCategory.APPETIZER,
-      isVegan: true,
-      isGlutenFree: true,
-      isLactoseFree: true,
-      containsAlcohol: false,
-      containsNuts: false,
-    },
-    allergies: 'Glutenfrei',
-    showNameInBuffet: true,
-    isSecretSanta: false,
-    wantsInvoice: true,
-    contribution: 'Ein Weihnachtsgedicht vortragen',
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'e7r8v2w4',
-    name: 'Stefan Schmidt',
-    email: 'stefan@example.com',
-    status: 'declined',
-    avatarStyle: 'avataaars',
-    avatarSeed: 'Stefan',
-    isSecretSanta: false,
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'f9s1x3y5',
-    name: 'Lisa Weber',
-    email: 'lisa@example.com',
-    status: 'maybe',
-    avatarStyle: 'shapes',
-    avatarSeed: 'Lisa',
-    isSecretSanta: false,
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'g2h4j6k8',
-    name: 'Jan Becker',
-    email: 'jan@example.com',
-    status: 'attending',
-    avatarStyle: 'adventurer',
-    avatarSeed: 'Jan',
-    isSecretSanta: true,
-    showNameInBuffet: true,
-    food: {
-      name: 'Hausgemachte Bowle',
-      category: FoodCategory.DRINK,
-      isVegan: true,
-      isGlutenFree: true,
-      isLactoseFree: true,
-      containsAlcohol: true,
-      containsNuts: false,
-    },
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'h3j5l7n9',
-    name: 'Katrin Hoffmann',
-    email: 'katrin@example.com',
-    status: 'maybe',
-    avatarStyle: 'micah',
-    avatarSeed: 'Katrin',
-    isSecretSanta: false,
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'i4k6m8o1',
-    name: 'Tom Wagner',
-    email: 'tom@example.com',
-    status: 'pending',
-    avatarStyle: 'bottts',
-    avatarSeed: 'Tom',
-    isSecretSanta: false,
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'j5l7n9p2',
-    name: 'Felix Graf',
-    email: 'felix@example.com',
-    status: 'attending',
-    avatarStyle: 'micah',
-    avatarSeed: 'Felix',
-    isSecretSanta: true,
-    showNameInBuffet: true,
-    food: {
-      name: 'Chili con Carne',
-      category: FoodCategory.MAIN,
-      isVegan: false,
-      isGlutenFree: true,
-      isLactoseFree: false, // Schmand etc.
-      containsAlcohol: false,
-      containsNuts: false,
-    },
-    contribution: 'Musikbox',
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'k6m8o1q3',
-    name: 'Monika Sommer',
-    email: 'monika@example.com',
-    status: 'attending',
-    avatarStyle: 'bottts',
-    avatarSeed: 'Monika',
-    plusOne: 'Peter',
-    isSecretSanta: false,
-    showNameInBuffet: true,
-    food: {
-      name: 'Baguette & Dips',
-      category: FoodCategory.SIDE,
-      isVegan: false,
-      isGlutenFree: false,
-      isLactoseFree: false,
-      containsAlcohol: false,
-      containsNuts: false,
-    },
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'l7n9p2r4',
-    name: 'David Winter',
-    email: 'david@example.com',
-    status: 'attending',
-    avatarStyle: 'adventurer',
-    avatarSeed: 'David',
-    isSecretSanta: true,
-    showNameInBuffet: false, // Anonymous
-    food: {
-      name: 'Nürnberger Lebkuchen',
-      category: FoodCategory.DESSERT,
-      isVegan: false,
-      isGlutenFree: false,
-      isLactoseFree: false,
-      containsAlcohol: false,
-      containsNuts: true,
-    },
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'm8o1q3s5',
-    name: 'Sarah Herbst',
-    email: 'sarah@example.com',
-    status: 'attending',
-    avatarStyle: 'avataaars',
-    avatarSeed: 'Sarah',
-    plusOne: 'Jonas',
-    isSecretSanta: true,
-    showNameInBuffet: true,
-    food: {
-      name: 'Große Käseplatte',
-      category: FoodCategory.APPETIZER,
-      isVegan: false,
-      isGlutenFree: true,
-      isLactoseFree: false,
-      containsAlcohol: false,
-      containsNuts: true, // Walnüsse Deko
-    },
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: 'judith-demo',
-    name: 'Judith',
-    email: 'judith@example.com',
-    status: 'pending',
-    avatarStyle: 'micah',
-    avatarSeed: 'Judith',
-    isSecretSanta: false,
-    lastUpdated: new Date().toISOString(),
   },
 ];

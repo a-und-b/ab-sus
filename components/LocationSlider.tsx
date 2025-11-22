@@ -34,7 +34,7 @@ export const LocationSlider: React.FC = () => {
 
   return (
     <div
-      className="relative w-full h-64 sm:h-80 rounded-3xl shadow-xl shadow-stone-200/50 border border-white overflow-hidden group"
+      className="relative w-full flex-1 min-h-64 rounded-3xl shadow-xl shadow-stone-200/50 border border-white overflow-hidden group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

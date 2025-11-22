@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Participant, EventConfig, EmailTemplate, EmailLog, ProgramItem } from '../types';
+import { Participant, EventConfig, EmailTemplate, EmailLog, ProgramItem, BuffetCategoryConfig } from '../types';
 import { dataService } from '../services/dataService';
 import { supabase } from '../services/supabase';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -10,7 +10,6 @@ import {
   Check,
   Download,
   Upload,
-  PieChart as PieIcon,
   ChevronUp,
   ChevronDown,
   ArrowUpDown,
@@ -43,7 +42,6 @@ import {
   Snowflake,
   Music,
   PartyPopper,
-  GripVertical,
   Plus,
   Trash2,
   Edit,
@@ -283,6 +281,66 @@ export const AdminPage: React.FC = () => {
       setTimeout(() => setConfigFeedback(null), 3000);
     } catch (err) {
       console.error('Failed to delete program item:', err);
+    }
+  };
+
+  // Buffet Management Functions
+  const [editingBuffetItem, setEditingBuffetItem] = useState<BuffetCategoryConfig | null>(null);
+  const [isAddingBuffetItem, setIsAddingBuffetItem] = useState(false);
+
+  const handleAddBuffetItem = () => {
+    setEditingBuffetItem({
+      id: `cat-${Date.now()}`,
+      label: '',
+      isActive: true,
+      inspirations: [],
+    });
+    setIsAddingBuffetItem(true);
+  };
+
+  const handleEditBuffetItem = (item: BuffetCategoryConfig) => {
+    setEditingBuffetItem(item);
+    setIsAddingBuffetItem(false);
+  };
+
+  const handleSaveBuffetItem = async () => {
+    if (!editingBuffetItem || !config) return;
+
+    let updatedBuffet: BuffetCategoryConfig[];
+    if (isAddingBuffetItem) {
+      updatedBuffet = [...(config.buffetConfig || []), editingBuffetItem];
+    } else {
+      updatedBuffet = (config.buffetConfig || []).map((item) =>
+        item.id === editingBuffetItem.id ? editingBuffetItem : item
+      );
+    }
+
+    try {
+      await dataService.updateConfig({ ...config, buffetConfig: updatedBuffet });
+      await loadData();
+      setEditingBuffetItem(null);
+      setIsAddingBuffetItem(false);
+      setConfigFeedback('Buffet-Kategorie gespeichert!');
+      setTimeout(() => setConfigFeedback(null), 3000);
+    } catch (err) {
+      console.error('Failed to save buffet item:', err);
+      setConfigFeedback('Fehler beim Speichern!');
+      setTimeout(() => setConfigFeedback(null), 3000);
+    }
+  };
+
+  const handleDeleteBuffetItem = async (itemId: string) => {
+    if (!config) return;
+    if (!confirm('Diese Kategorie wirklich löschen?')) return;
+
+    const updatedBuffet = (config.buffetConfig || []).filter((item) => item.id !== itemId);
+    try {
+      await dataService.updateConfig({ ...config, buffetConfig: updatedBuffet });
+      await loadData();
+      setConfigFeedback('Kategorie gelöscht!');
+      setTimeout(() => setConfigFeedback(null), 3000);
+    } catch (err) {
+      console.error('Failed to delete buffet item:', err);
     }
   };
 
@@ -1108,6 +1166,126 @@ export const AdminPage: React.FC = () => {
                           type="button"
                           onClick={handleSaveProgramItem}
                           disabled={!editingProgramItem.title}
+                          className="flex-1 bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Speichern
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-4 pt-6 border-t border-stone-200">
+                  <label className={labelStyle}>Buffet-Kategorien</label>
+                  <button
+                    type="button"
+                    onClick={handleAddBuffetItem}
+                    className="flex items-center gap-2 bg-stone-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-stone-900 transition-colors"
+                  >
+                    <Plus size={16} /> Hinzufügen
+                  </button>
+                </div>
+                
+                {/* Buffet Items List */}
+                <div className="space-y-3 mb-4">
+                  {(config.buffetConfig || []).map((item) => (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-4 p-4 rounded-xl border ${item.isActive ? 'bg-stone-50 border-stone-200' : 'bg-stone-100 border-stone-200 opacity-70'}`}
+                    >
+                      <div className={`p-2.5 rounded-xl ${item.isActive ? 'text-emerald-600 bg-emerald-50' : 'text-stone-400 bg-stone-200'}`}>
+                        {item.isActive ? <Utensils size={20} /> : <X size={20} />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-stone-800">{item.label}</p>
+                        <p className="text-sm text-stone-500 truncate max-w-md">
+                            {item.inspirations.join(', ')}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEditBuffetItem(item)}
+                          className="p-2 text-stone-500 hover:text-stone-800 hover:bg-stone-200 rounded-lg transition-colors"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteBuffetItem(item.id)}
+                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Buffet Item Editor Modal */}
+                {editingBuffetItem && (
+                  <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6">
+                      <h3 className="text-xl font-bold text-stone-800 mb-4">
+                        {isAddingBuffetItem ? 'Kategorie hinzufügen' : 'Kategorie bearbeiten'}
+                      </h3>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className={labelStyle}>Bezeichnung</label>
+                          <input
+                            type="text"
+                            value={editingBuffetItem.label}
+                            onChange={(e) =>
+                              setEditingBuffetItem({ ...editingBuffetItem, label: e.target.value })
+                            }
+                            className={inputStyle}
+                            placeholder="z.B. Dessert"
+                          />
+                        </div>
+
+                        <div>
+                          <label className={labelStyle}>Inspirationen (Kommagetrennt)</label>
+                          <textarea
+                            rows={3}
+                            value={editingBuffetItem.inspirations.join(', ')}
+                            onChange={(e) =>
+                              setEditingBuffetItem({
+                                ...editingBuffetItem,
+                                inspirations: e.target.value.split(',').map(s => s.trim()).filter(Boolean),
+                              })
+                            }
+                            className={inputStyle}
+                            placeholder="z.B. Kuchen, Eis, Pudding"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-3 p-4 bg-stone-50 rounded-xl border border-stone-200 cursor-pointer" onClick={() => setEditingBuffetItem({ ...editingBuffetItem, isActive: !editingBuffetItem.isActive })}>
+                            <div className={`w-6 h-6 rounded-md border flex items-center justify-center ${editingBuffetItem.isActive ? 'bg-stone-800 border-stone-800 text-white' : 'bg-white border-stone-300'}`}>
+                                {editingBuffetItem.isActive && <Check size={14} />}
+                            </div>
+                            <span className="font-bold text-stone-700 text-sm">Aktiv (Sichtbar im Onboarding)</span>
+                        </div>
+
+                      </div>
+
+                      <div className="flex gap-3 mt-6">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingBuffetItem(null);
+                            setIsAddingBuffetItem(false);
+                          }}
+                          className="flex-1 bg-stone-200 text-stone-700 py-3 rounded-xl font-bold hover:bg-stone-300 transition-colors"
+                        >
+                          Abbrechen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveBuffetItem}
+                          disabled={!editingBuffetItem.label}
                           className="flex-1 bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           Speichern
