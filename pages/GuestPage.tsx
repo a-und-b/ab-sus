@@ -39,7 +39,6 @@ import {
   Wine,
   Snowflake,
   Mic2,
-  Wallet,
   Save,
   Lock,
   ChevronRight,
@@ -79,7 +78,7 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
 
   // Onboarding State
   const [isOnboarding, setIsOnboarding] = useState(false);
-  const [onboardingStep, setOnboardingStep] = useState(1); // 1: Avatar/PlusOne, 2: Buffet, 3: Details
+  const [onboardingStep, setOnboardingStep] = useState(1); // 1: Avatar/PlusOne, 2: Buffet, 3: Voting/Contributions
   const [hasTriedNextStep, setHasTriedNextStep] = useState(false);
 
   // Form States
@@ -121,11 +120,11 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
   const [plusOneAllergySelection, setPlusOneAllergySelection] = useState<string[]>([]);
   const [plusOneAllergyCustom, setPlusOneAllergyCustom] = useState('');
 
-  const [isSecretSanta, setIsSecretSanta] = useState(false);
-
   // Payment & Contributions
-  const [wantsInvoice, setWantsInvoice] = useState(false);
   const [contribution, setContribution] = useState('');
+
+  // Activity Voting
+  const [activityVotes, setActivityVotes] = useState<string[]>([]);
 
   const [notes, setNotes] = useState('');
 
@@ -201,9 +200,8 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
         setPlusOneAllergySelection(plusOneAllergiesParsed.selection);
         setPlusOneAllergyCustom(plusOneAllergiesParsed.custom);
 
-        setIsSecretSanta(p.isSecretSanta);
-        setWantsInvoice(p.wantsInvoice || false);
         setContribution(p.contribution || '');
+        setActivityVotes(p.activityVotes || []);
         setNotes(p.notes || '');
 
         if (p.food) {
@@ -276,9 +274,8 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
         food: foodItem,
         showNameInBuffet: targetStatus === 'attending' ? showNameInBuffet : true,
         allergies: currentAllergies,
-        isSecretSanta: targetStatus === 'attending' ? isSecretSanta : false,
-        wantsInvoice: targetStatus === 'attending' ? wantsInvoice : false,
         contribution: targetStatus === 'attending' ? contribution : '',
+        activityVotes: targetStatus === 'attending' ? activityVotes : [],
         notes,
       });
 
@@ -308,9 +305,8 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
       hasPlusOne,
       plusOne,
       showNameInBuffet,
-      isSecretSanta,
-      wantsInvoice,
       contribution,
+      activityVotes,
       notes,
     ]
   );
@@ -326,6 +322,14 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
     );
 
     const timer = setTimeout(async () => {
+      // Compare activityVotes arrays
+      const currentActivityVotes = activityVotes || [];
+      const savedActivityVotes = participant.activityVotes || [];
+      const activityVotesChanged =
+        currentActivityVotes.length !== savedActivityVotes.length ||
+        currentActivityVotes.some((id) => !savedActivityVotes.includes(id)) ||
+        savedActivityVotes.some((id) => !currentActivityVotes.includes(id));
+
       const hasChanges =
         status !== participant.status ||
         avatarStyle !== participant.avatarStyle ||
@@ -336,10 +340,9 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
         (status === 'attending' &&
           hasPlusOne &&
           currentPlusOneAllergies !== (participant.plusOneAllergies || '')) ||
-        isSecretSanta !== participant.isSecretSanta ||
-        wantsInvoice !== (participant.wantsInvoice || false) ||
         contribution !== (participant.contribution || '') ||
         currentAllergies !== (participant.allergies || '') ||
+        activityVotesChanged ||
         foodName !== (participant.food?.name || '') ||
         foodCategory !== (participant.food?.category || '') ||
         foodDesc !== (participant.food?.description || '') ||
@@ -374,9 +377,8 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
     tags,
     userAllergySelection,
     userAllergyCustom,
-    isSecretSanta,
-    wantsInvoice,
     contribution,
+    activityVotes,
     notes,
     isFormValid,
     performSave,
@@ -409,17 +411,34 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
       return;
     }
     setHasTriedNextStep(false);
-    setOnboardingStep((prev) => prev + 1);
+    const activeActivities = (eventConfig.activities || []).filter((a) => a.isActive);
+    const nextStep = onboardingStep + 1;
+    // If we're on step 3 (or step 2 with no activities), finish onboarding
+    if (onboardingStep === 3 || (onboardingStep === 2 && activeActivities.length === 0)) {
+      handleFinishOnboarding();
+    } else {
+      setOnboardingStep(nextStep);
+    }
     window.scrollTo(0, 0);
   };
 
-  const handleFinishOnboarding = async () => {
+  const handleFinishOnboarding = useCallback(async () => {
     await performSave('attending');
     setStatus('attending');
     setIsOnboarding(false);
     setActiveTab('list'); // Go to list tab after onboarding
     window.scrollTo(0, 0);
-  };
+  }, [performSave]);
+
+  // Auto-finish onboarding when step 3 is reached with no active activities
+  useEffect(() => {
+    if (isOnboarding && onboardingStep === 3) {
+      const activeActivities = (eventConfig.activities || []).filter((a) => a.isActive);
+      if (activeActivities.length === 0) {
+        handleFinishOnboarding();
+      }
+    }
+  }, [isOnboarding, onboardingStep, eventConfig.activities, handleFinishOnboarding]);
 
   const handleQuickDecline = async () => {
     setStatus('declined');
@@ -447,6 +466,12 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
   const togglePlusOneAllergy = (item: string) => {
     setPlusOneAllergySelection((prev) =>
       prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
+    );
+  };
+
+  const toggleActivityVote = (activityId: string) => {
+    setActivityVotes((prev) =>
+      prev.includes(activityId) ? prev.filter((id) => id !== activityId) : [...prev, activityId]
     );
   };
 
@@ -585,7 +610,7 @@ END:VCALENDAR`;
             <div className="bg-xmas-pink/20 p-2 rounded-xl text-xmas-pink">
               <User size={24} />
             </div>
-            Dein Profilbild
+            Dein Profil
           </h3>
         </div>
       )}
@@ -666,6 +691,87 @@ END:VCALENDAR`;
                 </form>
               </div>
             )}
+          </div>
+        </div>
+        {/* Ernährungsweise & Unverträglichkeiten */}
+        <div className="mt-8 pt-8 border-t border-stone-200">
+          <label className={`${labelStyle} mb-2 flex items-center gap-2`}>
+            <AlertCircle size={16} className="text-xmas-red" /> Ernährungsweise &
+            Unverträglichkeiten
+          </label>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {eventConfig.dietaryOptions.map((item) => (
+              <button
+                key={item}
+                onClick={() => toggleUserAllergy(item)}
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-colors font-bold ${userAllergySelection.includes(item) ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-500 border-stone-200 hover:bg-stone-50'}`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          <input
+            type="text"
+            value={userAllergyCustom}
+            onChange={(e) => setUserAllergyCustom(e.target.value)}
+            placeholder="Sonstiges..."
+            className={inputStyle}
+          />
+        </div>
+        {hasPlusOne && eventConfig.allowPlusOne && (
+          <div className="mt-6 bg-stone-50 p-4 rounded-xl border border-stone-100">
+            <label className={`${labelStyle} mb-2 flex items-center gap-2 text-stone-600`}>
+              Für Begleitung ({plusOne || 'Gast'})
+            </label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {eventConfig.dietaryOptions.map((item) => (
+                <button
+                  key={item}
+                  onClick={() => togglePlusOneAllergy(item)}
+                  className={`px-3 py-1.5 text-xs rounded-lg border transition-colors font-bold ${plusOneAllergySelection.includes(item) ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-500 border-stone-200 hover:bg-stone-50'}`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              value={plusOneAllergyCustom}
+              onChange={(e) => setPlusOneAllergyCustom(e.target.value)}
+              placeholder="Sonstiges..."
+              className={inputStyle}
+            />
+          </div>
+        )}
+        {/* Name ausblenden */}
+        <div className="mt-8 pt-8 border-t border-stone-200">
+          <div
+            className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${!showNameInBuffet ? 'bg-amber-50 border-xmas-gold shadow-sm' : 'bg-stone-50 border-stone-100'}`}
+          >
+            <div
+              className={`p-2 rounded-full ${!showNameInBuffet ? 'bg-xmas-gold text-white' : 'bg-white text-stone-300'}`}
+            >
+              <Eye size={20} />
+            </div>
+            <div className="flex-grow">
+              <p className="font-bold text-stone-800 text-sm">
+                Name ausblenden?
+              </p>
+              <p className="text-xs text-stone-500 mt-1">
+                Aktivieren, um deinen Namen auf der Event-Seite zu verbergen (Gästeliste & Buffet).
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!showNameInBuffet}
+                onChange={(e) => setShowNameInBuffet(!e.target.checked)}
+                className="sr-only peer"
+              />
+              <div
+                className={`w-10 h-6 rounded-full peer peer-focus:outline-none transition-all ${!showNameInBuffet ? 'bg-xmas-gold' : 'bg-stone-200'} peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all`}
+              ></div>
+            </label>
           </div>
         </div>
       </div>
@@ -828,6 +934,114 @@ END:VCALENDAR`;
     </div>
   );
 
+  const renderVotingSection = () => {
+    const activeActivities = (eventConfig.activities || []).filter((a) => a.isActive);
+    
+    if (activeActivities.length === 0) {
+      return null; // Don't show voting step if no activities
+    }
+
+    return (
+      <div className={isOnboarding ? '' : sectionCardStyle}>
+        {!isOnboarding && (
+          <div className={cardHeaderStyle}>
+            <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
+              <div className="bg-blue-50 p-2 rounded-xl text-blue-600">
+                <Sparkles size={24} />
+              </div>
+              Wunschzettel
+            </h3>
+          </div>
+        )}
+        <div className={`${isOnboarding ? '' : cardContentStyle} space-y-4`}>
+          <p className="text-stone-600 text-sm mb-4">
+            Wähle die Aktivitäten aus, die dich am meisten interessieren. Deine Stimme hilft uns, das Programm zu gestalten!
+          </p>
+          <div className="space-y-3">
+            {activeActivities.map((activity) => {
+              const isSelected = activityVotes.includes(activity.id);
+              return (
+                <button
+                  key={activity.id}
+                  onClick={() => toggleActivityVote(activity.id)}
+                  className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                    isSelected
+                      ? 'bg-blue-50 border-blue-500 shadow-sm'
+                      : 'bg-white border-stone-200 hover:border-stone-400 hover:bg-stone-50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`mt-1 shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${
+                        isSelected
+                          ? 'bg-blue-500 border-blue-500'
+                          : 'border-stone-300'
+                      }`}
+                    >
+                      {isSelected && <CheckCircle2 size={14} className="text-white" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-bold text-base ${isSelected ? 'text-blue-900' : 'text-stone-800'}`}>
+                        {activity.title}
+                      </p>
+                      {activity.description && (
+                        <p className={`text-sm mt-1 ${isSelected ? 'text-blue-700' : 'text-stone-500'}`}>
+                          {activity.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <hr className="my-8 border-stone-200" />
+          {/* Aktiv einbringen */}
+        <div>
+          <label className={`${labelStyle} mb-2 flex items-center gap-2`}>
+            <Mic2 size={16} className="text-stone-500" /> Ich möchte mich aktiv einbringen:
+          </label>
+          {(eventConfig.contributionSuggestions || []).length > 0 && (
+            <div className="mb-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightbulb size={14} className="text-xmas-gold" />
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wide">
+                  Vorschläge
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(eventConfig.contributionSuggestions || []).map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => {
+                      if (contribution.trim()) {
+                        setContribution(`${contribution}, ${suggestion}`);
+                      } else {
+                        setContribution(suggestion);
+                      }
+                    }}
+                    className="text-xs bg-stone-50 hover:bg-white hover:shadow-sm border border-stone-200 text-stone-600 px-3 py-1.5 rounded-lg transition-all active:scale-95"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <textarea
+            value={contribution}
+            onChange={(e) => setContribution(e.target.value)}
+            placeholder="Dein Beitrag..."
+            rows={2}
+            className={inputStyle}
+          />
+        </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderDetailsSection = () => (
     <div className={isOnboarding ? '' : sectionCardStyle}>
       {!isOnboarding && (
@@ -841,92 +1055,39 @@ END:VCALENDAR`;
         </div>
       )}
       <div className={`${isOnboarding ? '' : cardContentStyle} space-y-8`}>
-        <div>
-          <label className={`${labelStyle} mb-2 flex items-center gap-2`}>
-            <AlertCircle size={16} className="text-xmas-red" /> Ernährungsweise &
-            Unverträglichkeiten
-          </label>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {eventConfig.dietaryOptions.map((item) => (
-              <button
-                key={item}
-                onClick={() => toggleUserAllergy(item)}
-                className={`px-3 py-1.5 text-xs rounded-lg border transition-colors font-bold ${userAllergySelection.includes(item) ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-500 border-stone-200 hover:bg-stone-50'}`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-          <input
-            type="text"
-            value={userAllergyCustom}
-            onChange={(e) => setUserAllergyCustom(e.target.value)}
-            placeholder="Sonstiges..."
-            className={inputStyle}
-          />
-        </div>
-        {hasPlusOne && eventConfig.allowPlusOne && (
-          <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
-            <label className={`${labelStyle} mb-2 flex items-center gap-2 text-stone-600`}>
-              Für Begleitung ({plusOne || 'Gast'})
-            </label>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {eventConfig.dietaryOptions.map((item) => (
-                <button
-                  key={item}
-                  onClick={() => togglePlusOneAllergy(item)}
-                  className={`px-3 py-1.5 text-xs rounded-lg border transition-colors font-bold ${plusOneAllergySelection.includes(item) ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-500 border-stone-200 hover:bg-stone-50'}`}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-            <input
-              type="text"
-              value={plusOneAllergyCustom}
-              onChange={(e) => setPlusOneAllergyCustom(e.target.value)}
-              placeholder="Sonstiges..."
-              className={inputStyle}
-            />
-          </div>
-        )}
-        <div
-          className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${isSecretSanta ? 'bg-amber-50 border-xmas-gold shadow-sm' : 'bg-stone-50 border-stone-100'}`}
-        >
-          <div
-            className={`p-2 rounded-full ${isSecretSanta ? 'bg-xmas-gold text-white' : 'bg-white text-stone-300'}`}
-          >
-            <Gift size={20} />
-          </div>
-          <div className="flex-grow">
-            <p className="font-bold text-stone-800 text-sm">
-              Wichteln?
-            </p>
-            <p className="text-xs text-stone-500 mt-1">
-            Machst du beim Wichteln mit? Dann wird dir ein anderer Gast zugelost und du beschenkst 
-            ihn oder sie mit einem kleinen Geschenk <strong>im Wert von maximal {eventConfig.secretSantaLimit}€</strong>. 
-            </p>            
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isSecretSanta}
-              onChange={(e) => setIsSecretSanta(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div
-              className={`w-10 h-6 rounded-full peer peer-focus:outline-none transition-all ${isSecretSanta ? 'bg-xmas-gold' : 'bg-stone-200'} peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all`}
-            ></div>
-          </label>
-        </div>
-        {/* Aktiv einbringen - moved to be right after Wichteln */}
+        {/* Aktiv einbringen */}
         <div>
           <label className={`${labelStyle} mb-2 flex items-center gap-2`}>
             <Mic2 size={16} className="text-stone-500" /> Ich möchte mich aktiv einbringen:
           </label>
-          <p className="text-xs text-stone-400 mb-3 italic">
-            z.B. Gedicht vortragen, Fotografieren, Snacks mitbringen, Musik machen...
-          </p>
+          {(eventConfig.contributionSuggestions || []).length > 0 && (
+            <div className="mb-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightbulb size={14} className="text-xmas-gold" />
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wide">
+                  Vorschläge
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(eventConfig.contributionSuggestions || []).map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => {
+                      if (contribution.trim()) {
+                        setContribution(`${contribution}, ${suggestion}`);
+                      } else {
+                        setContribution(suggestion);
+                      }
+                    }}
+                    className="text-xs bg-stone-50 hover:bg-white hover:shadow-sm border border-stone-200 text-stone-600 px-3 py-1.5 rounded-lg transition-all active:scale-95"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <textarea
             value={contribution}
             onChange={(e) => setContribution(e.target.value)}
@@ -934,67 +1095,6 @@ END:VCALENDAR`;
             rows={2}
             className={inputStyle}
           />
-        </div>
-        {/* Unkostenbeitrag - improved styling to match Wichteln card */}
-        <div
-          className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${wantsInvoice ? 'bg-amber-50 border-xmas-gold shadow-sm' : 'bg-stone-50 border-stone-100'}`}
-        >
-          <div
-            className={`p-2 rounded-full ${wantsInvoice ? 'bg-xmas-gold text-white' : 'bg-white text-stone-300'}`}
-          >
-            <Wallet size={20} />
-          </div>
-          <div className="flex-grow">
-            <p className="font-bold text-stone-800 text-sm">
-              Rechnung benötigt? 
-            </p>
-            <p className="text-xs text-stone-500 mt-1">
-            Den Unkostenbeitrag von {eventConfig.cost} bitte passend mitbringen.
-            </p>
-          </div>
-          <div className="flex flex-col items-end">
-             <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={wantsInvoice}
-                onChange={(e) => setWantsInvoice(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div
-                className={`w-10 h-6 rounded-full peer peer-focus:outline-none transition-all ${wantsInvoice ? 'bg-xmas-gold' : 'bg-stone-200'} peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all`}
-              ></div>
-            </label>
-          </div>
-        </div>
-
-        {/* Sichtbarkeit - styled like Wichteln and Rechnung */}
-        <div
-          className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${!showNameInBuffet ? 'bg-amber-50 border-xmas-gold shadow-sm' : 'bg-stone-50 border-stone-100'}`}
-        >
-          <div
-            className={`p-2 rounded-full ${!showNameInBuffet ? 'bg-xmas-gold text-white' : 'bg-white text-stone-300'}`}
-          >
-            <Eye size={20} />
-          </div>
-          <div className="flex-grow">
-            <p className="font-bold text-stone-800 text-sm">
-              Name ausblenden?
-            </p>
-            <p className="text-xs text-stone-500 mt-1">
-              Aktivieren, um deinen Namen auf der Event-Seite zu verbergen (Gästeliste & Buffet).
-            </p>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={!showNameInBuffet}
-              onChange={(e) => setShowNameInBuffet(!e.target.checked)}
-              className="sr-only peer"
-            />
-            <div
-              className={`w-10 h-6 rounded-full peer peer-focus:outline-none transition-all ${!showNameInBuffet ? 'bg-xmas-gold' : 'bg-stone-200'} peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all`}
-            ></div>
-          </label>
         </div>
       </div>
     </div>
@@ -1025,9 +1125,9 @@ END:VCALENDAR`;
   if (isOnboarding) {
     return (
       <div className="fixed inset-0 z-50 bg-xmas-cream flex flex-col items-center justify-start pt-12 md:pt-24 p-4 overflow-y-auto">
-        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl border border-white overflow-hidden">
+        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl border border-white overflow-hidden flex flex-col max-h-[90vh]">
           {/* Header */}
-          <div className="p-6 border-b border-stone-100 bg-stone-50/50">
+          <div className="p-6 border-b border-stone-100 bg-stone-50/50 shrink-0">
             {onboardingStep === 1 && (
               <>
                 <h3 className="font-serif font-bold text-xmas-dark text-xl flex items-center gap-2">
@@ -1049,14 +1149,14 @@ END:VCALENDAR`;
             {onboardingStep === 3 && (
               <>
                 <h3 className="font-serif font-bold text-xmas-dark text-xl flex items-center gap-2">
-                  <Sparkles className="text-emerald-600" size={24} /> Details & Abschluss, {participant.name.split(' ')[0]}
+                  <Sparkles className="text-blue-600" size={24} /> Wunschzettel
                 </h3>
-                <p className="text-sm text-stone-500 mt-1">Fast fertig! Nur noch ein paar Details.</p>
+                <p className="text-sm text-stone-500 mt-1">Wähle die Aktivitäten aus, die dich am meisten interessieren.</p>
               </>
             )}
           </div>
 
-          <div className="p-8 animate-fade-in space-y-6">
+          <div className="p-8 animate-fade-in space-y-6 overflow-y-auto flex-1">
             {onboardingStep === 1 && (
               <>
                 {renderAvatarSection()}
@@ -1093,36 +1193,47 @@ END:VCALENDAR`;
               </>
             )}
 
-            {onboardingStep === 3 && (
-              <>
-                {renderDetailsSection()}
-                <div className="flex justify-between pt-4 items-center">
-                  <button
-                    onClick={() => setOnboardingStep(2)}
-                    className="text-stone-500 font-bold px-4 hover:text-stone-800"
-                  >
-                    Zurück
-                  </button>
-                  <button
-                    onClick={handleFinishOnboarding}
-                    className="bg-xmas-green text-white px-10 py-4 rounded-full font-bold shadow-xl hover:scale-105 transition-all flex items-center gap-2"
-                  >
-                    <CheckCircle2 /> Jetzt anmelden
-                  </button>
-                </div>
-              </>
-            )}
+            {onboardingStep === 3 && (() => {
+              const activeActivities = (eventConfig.activities || []).filter((a) => a.isActive);
+              // Skip voting step if no activities (useEffect will handle auto-finish)
+              if (activeActivities.length === 0) {
+                return null;
+              }
+              return (
+                <>
+                  {renderVotingSection()}
+                  <div className="flex justify-between pt-4 items-center">
+                    <button
+                      onClick={() => setOnboardingStep(2)}
+                      className="text-stone-500 font-bold px-4 hover:text-stone-800"
+                    >
+                      Zurück
+                    </button>
+                    <button
+                      onClick={handleNextStep}
+                      className="bg-xmas-green text-white px-10 py-4 rounded-full font-bold shadow-xl hover:scale-105 transition-all flex items-center gap-2"
+                    >
+                      <CheckCircle2 /> Jetzt anmelden
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
         
         {/* Progress Indicator - Centered at bottom */}
         <div className="flex justify-center gap-2 mt-8">
-          {[1, 2, 3].map((step) => (
-            <div
-              key={step}
-              className={`h-2 w-8 rounded-full transition-all ${step <= onboardingStep ? 'bg-xmas-gold' : 'bg-white/50'}`}
-            ></div>
-          ))}
+          {(() => {
+            const activeActivities = (eventConfig.activities || []).filter((a) => a.isActive);
+            const totalSteps = activeActivities.length > 0 ? 3 : 2;
+            return [1, 2, 3].slice(0, totalSteps).map((step) => (
+              <div
+                key={step}
+                className={`h-2 w-8 rounded-full transition-all ${step <= onboardingStep ? 'bg-xmas-gold' : 'bg-white/50'}`}
+              ></div>
+            ));
+          })()}
         </div>
       </div>
     );
@@ -1212,6 +1323,123 @@ END:VCALENDAR`;
                   </div>
                 </div>
               )}
+
+              {/* Live Activity Ranking */}
+              {(() => {
+                const activeActivities = (eventConfig.activities || []).filter((a) => a.isActive);
+                if (activeActivities.length === 0) return null;
+
+                // Calculate vote counts
+                const voteCounts: Record<string, number> = {};
+                activeActivities.forEach((activity) => {
+                  voteCounts[activity.id] = 0;
+                });
+
+                allParticipants.forEach((p) => {
+                  if (p.status === 'attending' && p.activityVotes) {
+                    p.activityVotes.forEach((activityId) => {
+                      if (voteCounts[activityId] !== undefined) {
+                        voteCounts[activityId]++;
+                      }
+                    });
+                  }
+                });
+
+                // Sort activities by vote count (descending)
+                const rankedActivities = [...activeActivities]
+                  .map((activity) => ({
+                    ...activity,
+                    voteCount: voteCounts[activity.id] || 0,
+                  }))
+                  .sort((a, b) => b.voteCount - a.voteCount);
+
+                const totalVotes = Object.values(voteCounts).reduce((sum, count) => sum + count, 0);
+
+                if (totalVotes === 0) return null; // Don't show if no votes yet
+
+                return (
+                  <div className={sectionCardStyle}>
+                    <div className={cardHeaderStyle}>
+                      <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
+                        <div className="bg-blue-50 p-2 rounded-xl text-blue-600">
+                          <Sparkles size={24} />
+                        </div>
+                        Eure Wünsche
+                      </h3>
+                    </div>
+                    <div className={cardContentStyle}>
+                      <p className="text-stone-600 text-sm mb-4">
+                        Live-Ranking der Aktivitäten basierend auf euren Abstimmungen
+                      </p>
+                      <div className="space-y-4">
+                        {rankedActivities.map((activity, index) => {
+                          const percentage = totalVotes > 0 ? (activity.voteCount / totalVotes) * 100 : 0;
+                          const isTopThree = index < 3;
+                          return (
+                            <div
+                              key={activity.id}
+                              className={`p-4 rounded-xl border-2 transition-all ${
+                                isTopThree
+                                  ? 'bg-blue-50 border-blue-200 shadow-sm'
+                                  : 'bg-stone-50 border-stone-200'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-4 mb-2">
+                                <div className="flex items-start gap-3 flex-1">
+                                  <div
+                                    className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                                      isTopThree
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-stone-300 text-stone-600'
+                                    }`}
+                                  >
+                                    {index + 1}
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className={`font-bold text-base ${isTopThree ? 'text-blue-900' : 'text-stone-800'}`}>
+                                      {activity.title}
+                                    </p>
+                                    {activity.description && (
+                                      <p className={`text-sm mt-1 ${isTopThree ? 'text-blue-700' : 'text-stone-500'}`}>
+                                        {activity.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className={`font-bold text-lg ${isTopThree ? 'text-blue-600' : 'text-stone-600'}`}>
+                                    {activity.voteCount}
+                                  </p>
+                                  <p className="text-xs text-stone-400">
+                                    {activity.voteCount === 1 ? 'Stimme' : 'Stimmen'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="mt-3">
+                                <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-500 ${
+                                      isTopThree ? 'bg-blue-500' : 'bg-stone-400'
+                                    }`}
+                                    style={{ width: `${percentage}%` }}
+                                  ></div>
+                                </div>
+                                <p className="text-xs text-stone-400 mt-1">
+                                  {percentage.toFixed(0)}% der Stimmen
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-stone-400 mt-4 italic text-center">
+                        {totalVotes} {totalVotes === 1 ? 'Stimme' : 'Stimmen'} insgesamt
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Slider */}
               <LocationSlider />
             </div>
@@ -1495,6 +1723,7 @@ END:VCALENDAR`;
               {renderAvatarSection()}
               {renderPlusOneSection()}
               {renderBuffetSection()}
+              {renderVotingSection()}
               {renderDetailsSection()}
 
               {/* Manual Save Button */}

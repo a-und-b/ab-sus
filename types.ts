@@ -95,9 +95,8 @@ export interface Participant {
   food?: FoodItem;
   showNameInBuffet?: boolean; // Toggle visibility in public list
   allergies?: string; // User allergies
-  isSecretSanta: boolean;
-  wantsInvoice?: boolean; // New: Simple checkbox for invoice
   contribution?: string; // New: Free text for active participation
+  activityVotes?: string[]; // Array of activity IDs this participant voted for
   notes?: string; // Kept for legacy or internal use
   lastUpdated: string; // ISO Date
 }
@@ -108,6 +107,13 @@ export interface ProgramItem {
   description: string;
   icon: string; // Name of the icon (e.g., 'Wine', 'Music')
   color: string; // Tailwind color classes (e.g., 'text-red-500 bg-red-50')
+}
+
+export interface ActivityItem {
+  id: string;
+  title: string;
+  description?: string;
+  isActive: boolean; // Whether this activity is visible for voting
 }
 
 export interface BuffetCategoryConfig {
@@ -125,12 +131,13 @@ export interface EventConfig {
   location: string;
   maxGuests: number;
   allowPlusOne: boolean; // Toggle for plus one option
-  secretSantaLimit: number;
   dietaryOptions: string[];
   cost: string; // e.g. "25 € pro Person"
   hosts: string; // e.g. "Holger, Daniela..."
   program: ProgramItem[]; // Structured program highlights
   buffetConfig: BuffetCategoryConfig[]; // New: Dynamic buffet configuration
+  activities: ActivityItem[]; // Interactive program activities for voting
+  contributionSuggestions: string[]; // Suggestions for active participation contributions
   contactEmail: string;
   contactPhone?: string; // Optional contact phone number
   rsvpDeadline: string; // ISO Date String YYYY-MM-DD
@@ -144,7 +151,6 @@ export const DEFAULT_EVENT_CONFIG: EventConfig = {
   location: 'Judiths Gasthof, Weissenstadt',
   maxGuests: 30,
   allowPlusOne: false, // Default to false as requested
-  secretSantaLimit: 15,
   dietaryOptions: [
     'Vegetarisch',
     'Vegan',
@@ -223,6 +229,13 @@ export const DEFAULT_EVENT_CONFIG: EventConfig = {
       isActive: true,
       inspirations: BUFFET_INSPIRATIONS[FoodCategory.DRINK],
     },
+  ],
+  activities: [], // Empty by default, hosts can add activities
+  contributionSuggestions: [
+    'Gedicht vortragen',
+    'Fotografieren',
+    'Snacks mitbringen',
+    'Musik machen',
   ],
   contactEmail: 'info@selbst-und-selig.de',
   contactPhone: '',
@@ -325,8 +338,7 @@ Nur noch eine Woche! Wir treffen uns am {{date}} um {{time}} in {{location}}.
 
 Wichtige Reminder:
 1. Unkostenbeitrag: {{cost}} (bitte passend mitbringen)
-2. Wichteln: Falls du mitmachst, denk an dein Geschenk (max {{secretSantaLimit}}€).
-3. Buffet: Du bringst "{{food}}" mit. Danke!
+2. Buffet: Du bringst "{{food}}" mit. Danke!
 
 Wir freuen uns auf dich!
 {{hosts}}`,

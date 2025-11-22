@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Participant, EventConfig, EmailTemplate, EmailLog, ProgramItem, BuffetCategoryConfig } from '../types';
+import { Participant, EventConfig, EmailTemplate, EmailLog, ProgramItem, BuffetCategoryConfig, ActivityItem } from '../types';
 import { dataService } from '../services/dataService';
 import { supabase } from '../services/supabase';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -35,7 +35,6 @@ import {
   Sparkles,
   Eye,
   Code,
-  Wallet,
   LogOut,
   Utensils,
   Flame,
@@ -46,11 +45,16 @@ import {
   Trash2,
   Edit,
   Gift,
+  Phone,
+  Euro,
+  User,
+  Calendar,
+  Mic2,
 } from 'lucide-react';
 import { Avatar } from '../components/Avatar';
 import { LoginPage } from '../components/LoginPage';
 
-type SortKey = 'name' | 'status' | 'food' | 'isSecretSanta';
+type SortKey = 'name' | 'status' | 'food';
 type Tab = 'dashboard' | 'setup' | 'guests' | 'emails';
 type RecipientFilter = 'all' | 'attending' | 'pending' | 'declined' | 'single';
 type EmailViewMode = 'edit' | 'preview';
@@ -98,6 +102,11 @@ export const AdminPage: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [sendFeedback, setSendFeedback] = useState('');
   const [emailViewMode, setEmailViewMode] = useState<EmailViewMode>('edit');
+  
+  // Quick Message State
+  const [showQuickMessageEditor, setShowQuickMessageEditor] = useState(false);
+  const [quickMessageSubject, setQuickMessageSubject] = useState('');
+  const [quickMessageBody, setQuickMessageBody] = useState('');
 
   // Selection State for Detail View
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
@@ -114,6 +123,7 @@ export const AdminPage: React.FC = () => {
 
   // Config Inputs
   const [dietaryInput, setDietaryInput] = useState('');
+  const [contributionSuggestionsInput, setContributionSuggestionsInput] = useState('');
   
   // Program Editor State
   const [editingProgramItem, setEditingProgramItem] = useState<ProgramItem | null>(null);
@@ -133,6 +143,7 @@ export const AdminPage: React.FC = () => {
       setParticipants(participantsData);
       setConfig(configData);
       setDietaryInput(configData.dietaryOptions.join(', '));
+      setContributionSuggestionsInput((configData.contributionSuggestions || []).join(', '));
       setTemplates(templatesData);
       setEmailLogs(logsData);
     } catch (error) {
@@ -179,7 +190,10 @@ export const AdminPage: React.FC = () => {
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedParticipant(null);
+      if (e.key === 'Escape') {
+        setSelectedParticipant(null);
+        setShowQuickMessageEditor(false);
+      }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
@@ -202,12 +216,203 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  const handleDeleteParticipant = async () => {
+    if (!selectedParticipant) return;
+    
+    if (window.confirm(`Möchtest du "${selectedParticipant.name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
+      try {
+        const participantName = selectedParticipant.name;
+        const participantId = selectedParticipant.id;
+        console.log('Deleting participant:', participantName, 'ID:', participantId);
+        
+        const success = await dataService.delete(participantId);
+        console.log('Delete result:', success);
+        
+        if (success) {
+          // Close modal immediately
+          setSelectedParticipant(null);
+          // Refresh data
+          await loadData();
+          setFeedback(`${participantName} wurde gelöscht.`);
+          setTimeout(() => setFeedback(null), 3000);
+        } else {
+          setFeedback('Fehler beim Löschen! Die RLS-Richtlinie blockiert möglicherweise die Löschung. Bitte überprüfe die Supabase RLS-Richtlinien für die Tabelle "participants". Siehe Konsole für Details.');
+          setTimeout(() => setFeedback(null), 8000);
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
+        setFeedback('Fehler beim Löschen! Bitte versuche es erneut. Siehe Konsole für Details.');
+        setTimeout(() => setFeedback(null), 5000);
+      }
+    }
+  };
+
+  const handleOpenQuickMessage = () => {
+    if (!selectedParticipant) return;
+    
+    // Use the first available template (invitation email) or any template as default
+    const templateToUse = templates.find((t) => t.id === 't1_invite') || templates[0];
+    
+    if (templateToUse) {
+      // Replace placeholders with actual values
+      const link = `${window.location.origin}/#/p/${selectedParticipant.id}`;
+      const attendingCount = participants.filter((p) => p.status === 'attending').length;
+      
+      const replacements: Record<string, string> = {
+        '{{name}}': selectedParticipant.name.split(' ')[0],
+        '{{fullname}}': selectedParticipant.name,
+        '{{email}}': selectedParticipant.email,
+        '{{link}}': link,
+        '{{date}}': config?.date || '',
+        '{{time}}': config?.time || '',
+        '{{location}}': config?.location || '',
+        '{{cost}}': config?.cost || '',
+        '{{hosts}}': config?.hosts || '',
+        '{{guestCount}}': attendingCount.toString(),
+        '{{food}}': selectedParticipant.food?.name || 'noch nichts eingetragen',
+        '{{plusOne}}': selectedParticipant.plusOne || 'keine',
+      };
+      
+      let subject = templateToUse.subject;
+      let body = templateToUse.body;
+      
+      Object.entries(replacements).forEach(([key, val]) => {
+        subject = subject.split(key).join(val);
+        body = body.split(key).join(val);
+      });
+      
+      setQuickMessageSubject(subject);
+      setQuickMessageBody(body);
+    } else {
+      // Default message if no template
+      setQuickMessageSubject(`Nachricht für ${selectedParticipant.name}`);
+      setQuickMessageBody(`Hallo ${selectedParticipant.name.split(' ')[0]},\n\n`);
+    }
+    
+    setShowQuickMessageEditor(true);
+  };
+
+  const insertQuickMessageVariable = (variable: string) => {
+    const textarea = document.getElementById('quick-message-body') as HTMLTextAreaElement;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = quickMessageBody;
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+      setQuickMessageBody(before + variable + after);
+      // Set cursor position after inserted variable
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + variable.length, start + variable.length);
+      }, 0);
+    } else {
+      setQuickMessageBody(quickMessageBody + ' ' + variable);
+    }
+  };
+
+  const handleSendQuickMessage = async () => {
+    if (!selectedParticipant || !quickMessageSubject.trim() || !quickMessageBody.trim()) {
+      alert('Bitte fülle Betreff und Nachricht aus.');
+      return;
+    }
+    
+    if (!confirm(`E-Mail an "${selectedParticipant.name}" (${selectedParticipant.email}) senden?`)) {
+      return;
+    }
+    
+    try {
+      setIsSending(true);
+      
+      // Prepare the email manually with custom content
+      const config = await dataService.getConfig();
+      const allParticipants = await dataService.getAll();
+      const attendingCount = allParticipants.filter((p) => p.status === 'attending').length;
+      
+      const link = `${window.location.origin}/#/p/${selectedParticipant.id}`;
+      const replacements: Record<string, string> = {
+        '{{name}}': selectedParticipant.name.split(' ')[0],
+        '{{fullname}}': selectedParticipant.name,
+        '{{email}}': selectedParticipant.email,
+        '{{link}}': link,
+        '{{date}}': config.date,
+        '{{time}}': config.time,
+        '{{location}}': config.location,
+        '{{cost}}': config.cost,
+        '{{hosts}}': config.hosts,
+        '{{guestCount}}': attendingCount.toString(),
+        '{{food}}': selectedParticipant.food?.name || 'noch nichts eingetragen',
+        '{{plusOne}}': selectedParticipant.plusOne || 'keine',
+      };
+      
+      let finalSubject = quickMessageSubject;
+      let finalBody = quickMessageBody;
+      
+      Object.entries(replacements).forEach(([key, val]) => {
+        finalSubject = finalSubject.split(key).join(val);
+        finalBody = finalBody.split(key).join(val);
+      });
+      
+      // Send via Supabase function
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          emails: [
+            {
+              to: selectedParticipant.email,
+              subject: finalSubject,
+              html: finalBody.replace(/\n/g, '<br>'),
+            },
+          ],
+        },
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Log entry
+      const newLog = {
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        template_name: 'Quick Message',
+        recipient_count: 1,
+        recipients_preview: selectedParticipant.name,
+        status: 'sent' as const,
+      };
+      
+      await supabase.from('email_logs').insert({
+        id: newLog.id,
+        date: newLog.date,
+        template_name: newLog.template_name,
+        recipient_count: newLog.recipient_count,
+        recipients_preview: newLog.recipients_preview,
+        status: newLog.status,
+      });
+      
+      setIsSending(false);
+      setShowQuickMessageEditor(false);
+      setQuickMessageSubject('');
+      setQuickMessageBody('');
+      setFeedback(`E-Mail an ${selectedParticipant.name} gesendet!`);
+      await loadData();
+      setTimeout(() => setFeedback(null), 3000);
+    } catch {
+      setIsSending(false);
+      setFeedback('Fehler beim Senden der E-Mail!');
+      setTimeout(() => setFeedback(null), 3000);
+    }
+  };
+
   const handleUpdateConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (config) {
       const updatedConfig = {
         ...config,
         dietaryOptions: dietaryInput
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        contributionSuggestions: contributionSuggestionsInput
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean),
@@ -288,6 +493,10 @@ export const AdminPage: React.FC = () => {
   const [editingBuffetItem, setEditingBuffetItem] = useState<BuffetCategoryConfig | null>(null);
   const [isAddingBuffetItem, setIsAddingBuffetItem] = useState(false);
 
+  // Activity Management Functions
+  const [editingActivityItem, setEditingActivityItem] = useState<ActivityItem | null>(null);
+  const [isAddingActivity, setIsAddingActivity] = useState(false);
+
   const handleAddBuffetItem = () => {
     setEditingBuffetItem({
       id: `cat-${Date.now()}`,
@@ -344,6 +553,63 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  // Activity Management Functions
+  const handleAddActivity = () => {
+    setEditingActivityItem({
+      id: `activity-${Date.now()}`,
+      title: '',
+      description: '',
+      isActive: true,
+    });
+    setIsAddingActivity(true);
+  };
+
+  const handleEditActivity = (item: ActivityItem) => {
+    setEditingActivityItem(item);
+    setIsAddingActivity(false);
+  };
+
+  const handleSaveActivity = async () => {
+    if (!editingActivityItem || !config) return;
+
+    let updatedActivities: ActivityItem[];
+    if (isAddingActivity) {
+      updatedActivities = [...(config.activities || []), editingActivityItem];
+    } else {
+      updatedActivities = (config.activities || []).map((item) =>
+        item.id === editingActivityItem.id ? editingActivityItem : item
+      );
+    }
+
+    try {
+      await dataService.updateConfig({ ...config, activities: updatedActivities });
+      await loadData();
+      setEditingActivityItem(null);
+      setIsAddingActivity(false);
+      setConfigFeedback('Aktivität gespeichert!');
+      setTimeout(() => setConfigFeedback(null), 3000);
+    } catch (err) {
+      console.error('Failed to save activity:', err);
+      setConfigFeedback('Fehler beim Speichern!');
+      setTimeout(() => setConfigFeedback(null), 3000);
+    }
+  };
+
+  const handleDeleteActivity = async (itemId: string) => {
+    if (!config) return;
+    if (!confirm('Diese Aktivität wirklich löschen?')) return;
+
+    const updatedActivities = (config.activities || []).filter((item) => item.id !== itemId);
+    try {
+      await dataService.updateConfig({ ...config, activities: updatedActivities });
+      await loadData();
+      setConfigFeedback('Aktivität gelöscht!');
+      setTimeout(() => setConfigFeedback(null), 3000);
+    } catch (err) {
+      console.error('Failed to delete activity:', err);
+    }
+  };
+
   const copyLink = (id: string) => {
     const url = `${window.location.origin}/#/p/${id}`;
     navigator.clipboard.writeText(url);
@@ -362,9 +628,7 @@ export const AdminPage: React.FC = () => {
       'Essen',
       'Kategorie',
       'Beschreibung',
-      'Wichteln',
       'Ernährung/Allergien',
-      'Zahlung',
       'Beiträge',
       'Notizen',
       'Link',
@@ -378,9 +642,7 @@ export const AdminPage: React.FC = () => {
       p.food?.name || '',
       p.food?.category || '',
       p.food?.description || '',
-      p.isSecretSanta ? 'Ja' : 'Nein',
       p.allergies || '',
-      p.wantsInvoice ? 'Rechnung' : 'Bar',
       p.contribution || '',
       p.notes || '',
       `${window.location.origin}/#/p/${p.id}`,
@@ -541,7 +803,6 @@ export const AdminPage: React.FC = () => {
       '{{location}}': config.location,
       '{{cost}}': config.cost,
       '{{hosts}}': config.hosts,
-      '{{secretSantaLimit}}': config.secretSantaLimit.toString(),
       '{{guestCount}}': attendingCount.toString(),
       '{{food}}': sampleP.food?.name || 'noch nichts eingetragen',
       '{{plusOne}}': sampleP.plusOne || 'keine',
@@ -564,7 +825,6 @@ export const AdminPage: React.FC = () => {
     plusOnes: participants.filter((p) => p.status === 'attending' && p.plusOne).length,
     declined: participants.filter((p) => p.status === 'declined').length,
     pending: participants.filter((p) => p.status === 'pending').length,
-    secretSanta: participants.filter((p) => p.isSecretSanta && p.status === 'attending').length,
   };
 
   const chartData = [
@@ -757,12 +1017,6 @@ export const AdminPage: React.FC = () => {
                   sub: 'Einladungen',
                   color: 'border-yellow-500',
                 },
-                {
-                  label: 'Wichteln',
-                  val: stats.secretSanta,
-                  sub: 'Teilnehmer',
-                  color: 'border-purple-500',
-                },
               ].map((stat, i) => (
                 <div
                   key={i}
@@ -834,196 +1088,247 @@ export const AdminPage: React.FC = () => {
 
       {/* --- TAB: EVENT SETUP --- */}
       {activeTab === 'setup' && config && (
-        <div className="animate-fade-in max-w-4xl mx-auto">
-          <div className={cardStyle}>
-            <h3 className="font-bold text-lg text-stone-800 mb-6 flex items-center gap-2">
+        <div className="animate-fade-in max-w-4xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-lg text-stone-800 flex items-center gap-2">
               <Settings className="text-stone-400" /> Konfiguration
             </h3>
             {configFeedback && (
-              <div className="mb-4 p-3 bg-green-50 text-green-700 text-sm rounded-lg flex items-center gap-2">
+              <div className="p-3 bg-green-50 text-green-700 text-sm rounded-lg flex items-center gap-2">
                 <Check size={16} /> {configFeedback}
               </div>
             )}
-            <form onSubmit={handleUpdateConfig} className="space-y-6">
-              <div>
-                <label className={labelStyle}>Titel der Veranstaltung</label>
-                <input
-                  type="text"
-                  value={config.title}
-                  onChange={(e) => setConfig({ ...config, title: e.target.value })}
-                  className={inputStyle}
-                />
-              </div>
-              <div>
-                <label className={labelStyle}>Untertitel</label>
-                <input
-                  type="text"
-                  value={config.subtitle}
-                  onChange={(e) => setConfig({ ...config, subtitle: e.target.value })}
-                  className={inputStyle}
-                />
-              </div>
+          </div>
 
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className={labelStyle}>Datum (Text)</label>
-                  <input
-                    type="text"
-                    value={config.date}
-                    onChange={(e) => setConfig({ ...config, date: e.target.value })}
-                    className={inputStyle}
-                  />
-                </div>
-                <div>
-                  <label className={labelStyle}>Uhrzeit</label>
-                  <div className="relative">
-                    <Clock size={16} className="absolute left-3 top-3.5 text-stone-400" />
+          <form onSubmit={handleUpdateConfig} className="space-y-6">
+            {/* Top 4 Sections in 2-Column Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Event Details Section */}
+              <div className={cardStyle}>
+                <h4 className="text-sm font-bold text-stone-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <Sparkles size={14} /> Veranstaltungsdetails
+                </h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className={labelStyle}>Titel der Veranstaltung</label>
                     <input
                       type="text"
-                      value={config.time || ''}
-                      onChange={(e) => setConfig({ ...config, time: e.target.value })}
-                      className={`${inputStyle} pl-9`}
+                      value={config.title}
+                      onChange={(e) => setConfig({ ...config, title: e.target.value })}
+                      className={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelStyle}>Untertitel</label>
+                    <input
+                      type="text"
+                      value={config.subtitle}
+                      onChange={(e) => setConfig({ ...config, subtitle: e.target.value })}
+                      className={inputStyle}
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className={labelStyle}>Max Gäste</label>
-                  <input
-                    type="number"
-                    value={config.maxGuests}
-                    onChange={(e) => setConfig({ ...config, maxGuests: parseInt(e.target.value) })}
-                    className={inputStyle}
-                  />
-                </div>
-                <div>
-                  <label className={labelStyle}>Anmeldeschluss (RSVP Deadline)</label>
-                  <input
-                    type="date"
-                    value={config.rsvpDeadline}
-                    onChange={(e) => setConfig({ ...config, rsvpDeadline: e.target.value })}
-                    className={inputStyle}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelStyle}>Gäste-Optionen</label>
-                <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <div
-                      className={`w-10 h-6 rounded-full relative transition-colors shrink-0 ${config.allowPlusOne ? 'bg-stone-800' : 'bg-stone-300'}`}
-                    >
+              {/* Zeit & Rahmen Section */}
+              <div className={cardStyle}>
+                <h4 className="text-sm font-bold text-stone-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <CalendarClock size={14} /> Zeit & Rahmen
+                </h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className={labelStyle}>Datum (Text)</label>
+                    <div className="relative">
+                      <Calendar size={16} className="absolute left-3 top-3.5 text-stone-400" />
                       <input
-                        type="checkbox"
-                        className="hidden"
-                        checked={config.allowPlusOne}
-                        onChange={(e) => setConfig({ ...config, allowPlusOne: e.target.checked })}
+                        type="text"
+                        value={config.date}
+                        onChange={(e) => setConfig({ ...config, date: e.target.value })}
+                        className={`${inputStyle} pl-9`}
+                        placeholder="z.B. 18. Dezember 2025"
                       />
-                      <div
-                        className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${config.allowPlusOne ? 'left-5' : 'left-1'}`}
-                      ></div>
                     </div>
-                    <span className="text-sm font-bold text-stone-700">
-                      Begleitung (+1) erlauben
-                    </span>
-                  </label>
+                  </div>
+                  <div>
+                    <label className={labelStyle}>Uhrzeit</label>
+                    <div className="relative">
+                      <Clock size={16} className="absolute left-3 top-3.5 text-stone-400" />
+                      <input
+                        type="text"
+                        value={config.time || ''}
+                        onChange={(e) => setConfig({ ...config, time: e.target.value })}
+                        className={`${inputStyle} pl-9`}
+                        placeholder="z.B. 17:00 Uhr"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelStyle}>Max Gäste</label>
+                    <div className="relative">
+                      <Users size={16} className="absolute left-3 top-3.5 text-stone-400" />
+                      <input
+                        type="number"
+                        value={config.maxGuests}
+                        onChange={(e) => setConfig({ ...config, maxGuests: parseInt(e.target.value) })}
+                        className={`${inputStyle} pl-9`}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelStyle}>Anmeldeschluss (RSVP Deadline)</label>
+                    <div className="relative">
+                      <CalendarClock size={16} className="absolute left-3 top-3.5 text-stone-400" />
+                      <input
+                        type="date"
+                        value={config.rsvpDeadline}
+                        onChange={(e) => setConfig({ ...config, rsvpDeadline: e.target.value })}
+                        className={`${inputStyle} pl-9`}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelStyle}>Gäste-Optionen</label>
+                    <div className="bg-stone-50 p-4 rounded-xl border border-stone-200">
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <div
+                          className={`w-11 h-6 rounded-full relative transition-all duration-200 shrink-0 shadow-inner ${
+                            config.allowPlusOne
+                              ? 'bg-stone-800 shadow-stone-800/30'
+                              : 'bg-stone-300 shadow-stone-300/30'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={config.allowPlusOne}
+                            onChange={(e) => setConfig({ ...config, allowPlusOne: e.target.checked })}
+                          />
+                          <div
+                            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-all duration-200 shadow-sm ${
+                              config.allowPlusOne ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-bold text-stone-700 group-hover:text-stone-900 transition-colors">
+                          Begleitung (+1) erlauben
+                        </span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className={labelStyle}>Wichtel-Limit (€)</label>
-                <input
-                  type="number"
-                  value={config.secretSantaLimit}
-                  onChange={(e) =>
-                    setConfig({ ...config, secretSantaLimit: parseInt(e.target.value) })
-                  }
-                  className={inputStyle}
-                />
-              </div>
-
-              <div>
-                <label className={labelStyle}>Ort</label>
-                <div className="relative">
-                  <MapPin size={16} className="absolute left-3 top-3.5 text-stone-400" />
-                  <input
-                    type="text"
-                    value={config.location}
-                    onChange={(e) => setConfig({ ...config, location: e.target.value })}
-                    className={`${inputStyle} pl-9`}
-                  />
-                  {config.location && (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(config.location)}`}
-                      target="_blank"
-                      className="absolute right-3 top-3.5 text-stone-400 hover:text-stone-800"
-                      rel="noreferrer"
-                    >
-                      <ExternalLink size={14} />
-                    </a>
-                  )}
+              {/* Ort & Gastgeber Section */}
+              <div className={cardStyle}>
+                <h4 className="text-sm font-bold text-stone-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <MapPin size={14} /> Ort & Gastgeber
+                </h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className={labelStyle}>Ort</label>
+                    <div className="relative">
+                      <MapPin size={16} className="absolute left-3 top-3.5 text-stone-400" />
+                      <input
+                        type="text"
+                        value={config.location}
+                        onChange={(e) => setConfig({ ...config, location: e.target.value })}
+                        className={`${inputStyle} pl-9 ${config.location ? 'pr-9' : ''}`}
+                      />
+                      {config.location && (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(config.location)}`}
+                          target="_blank"
+                          className="absolute right-3 top-3.5 text-stone-400 hover:text-stone-800 transition-colors"
+                          rel="noreferrer"
+                          title="In Google Maps öffnen"
+                        >
+                          <ExternalLink size={14} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelStyle}>Unkostenbeitrag</label>
+                    <div className="relative">
+                      <Euro size={16} className="absolute left-3 top-3.5 text-stone-400" />
+                      <input
+                        type="text"
+                        value={config.cost || ''}
+                        onChange={(e) => setConfig({ ...config, cost: e.target.value })}
+                        className={`${inputStyle} pl-9`}
+                        placeholder="z.B. 25€ pro Person"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelStyle}>Gastgeber</label>
+                    <div className="relative">
+                      <User size={16} className="absolute left-3 top-3.5 text-stone-400" />
+                      <input
+                        type="text"
+                        value={config.hosts || ''}
+                        onChange={(e) => setConfig({ ...config, hosts: e.target.value })}
+                        className={`${inputStyle} pl-9`}
+                        placeholder="z.B. Holger, Daniela..."
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className={labelStyle}>Unkostenbeitrag</label>
-                <input
-                  type="text"
-                  value={config.cost || ''}
-                  onChange={(e) => setConfig({ ...config, cost: e.target.value })}
-                  className={inputStyle}
-                  placeholder="z.B. 25€ pro Person"
-                />
-              </div>
-
-              <div>
-                <label className={labelStyle}>Gastgeber</label>
-                <input
-                  type="text"
-                  value={config.hosts || ''}
-                  onChange={(e) => setConfig({ ...config, hosts: e.target.value })}
-                  className={inputStyle}
-                />
-              </div>
-
-              <div>
-                <label className={labelStyle}>Kontakt-Email</label>
-                <input
-                  type="text"
-                  value={config.contactEmail || ''}
-                  onChange={(e) => setConfig({ ...config, contactEmail: e.target.value })}
-                  className={inputStyle}
-                />
-              </div>
-
-              <div>
-                <label className={labelStyle}>Kontakt-Telefon</label>
-                <input
-                  type="text"
-                  value={config.contactPhone || ''}
-                  onChange={(e) => setConfig({ ...config, contactPhone: e.target.value })}
-                  className={inputStyle}
-                  placeholder="z.B. +49 123 456789"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <label className={labelStyle}>Programm-Highlights</label>
-                  <button
-                    type="button"
-                    onClick={handleAddProgramItem}
-                    className="flex items-center gap-2 bg-stone-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-stone-900 transition-colors"
-                  >
-                    <Plus size={16} /> Hinzufügen
-                  </button>
+              {/* Kontakt Section */}
+              <div className={cardStyle}>
+                <h4 className="text-sm font-bold text-stone-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <Mail size={14} /> Kontakt
+                </h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className={labelStyle}>Kontakt-Email</label>
+                    <div className="relative">
+                      <Mail size={16} className="absolute left-3 top-3.5 text-stone-400" />
+                      <input
+                        type="email"
+                        value={config.contactEmail || ''}
+                        onChange={(e) => setConfig({ ...config, contactEmail: e.target.value })}
+                        className={`${inputStyle} pl-9`}
+                        placeholder="z.B. info@example.de"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelStyle}>Kontakt-Telefon</label>
+                    <div className="relative">
+                      <Phone size={16} className="absolute left-3 top-3.5 text-stone-400" />
+                      <input
+                        type="tel"
+                        value={config.contactPhone || ''}
+                        onChange={(e) => setConfig({ ...config, contactPhone: e.target.value })}
+                        className={`${inputStyle} pl-9`}
+                        placeholder="z.B. +49 123 456789"
+                      />
+                    </div>
+                  </div>
                 </div>
-                
-                {/* Program Items List */}
-                <div className="space-y-3 mb-4">
+              </div>
+            </div>
+
+            {/* Programm-Highlights Section */}
+            <div className={cardStyle}>
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="text-sm font-bold text-stone-500 uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles size={14} /> Programm-Highlights
+                </h4>
+                <button
+                  type="button"
+                  onClick={handleAddProgramItem}
+                  className="flex items-center gap-2 bg-stone-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-stone-900 transition-colors"
+                >
+                  <Plus size={16} /> Hinzufügen
+                </button>
+              </div>
+              
+              {/* Program Items List */}
+              <div className="space-y-3">
                   {config.program.map((item) => {
                     const IconComponent = AVAILABLE_ICONS.find((i) => i.name === item.icon)?.component || Sparkles;
                     return (
@@ -1174,22 +1479,25 @@ export const AdminPage: React.FC = () => {
                     </div>
                   </div>
                 )}
-              </div>
+            </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-4 pt-6 border-t border-stone-200">
-                  <label className={labelStyle}>Buffet-Kategorien</label>
-                  <button
-                    type="button"
-                    onClick={handleAddBuffetItem}
-                    className="flex items-center gap-2 bg-stone-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-stone-900 transition-colors"
-                  >
-                    <Plus size={16} /> Hinzufügen
-                  </button>
-                </div>
-                
-                {/* Buffet Items List */}
-                <div className="space-y-3 mb-4">
+            {/* Buffet-Kategorien Section */}
+            <div className={cardStyle}>
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="text-sm font-bold text-stone-500 uppercase tracking-wider flex items-center gap-2">
+                  <Utensils size={14} /> Buffet-Kategorien
+                </h4>
+                <button
+                  type="button"
+                  onClick={handleAddBuffetItem}
+                  className="flex items-center gap-2 bg-stone-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-stone-900 transition-colors"
+                >
+                  <Plus size={16} /> Hinzufügen
+                </button>
+              </div>
+              
+              {/* Buffet Items List */}
+              <div className="space-y-3">
                   {(config.buffetConfig || []).map((item) => (
                     <div
                       key={item.id}
@@ -1294,8 +1602,143 @@ export const AdminPage: React.FC = () => {
                     </div>
                   </div>
                 )}
-              </div>
+            </div>
 
+            {/* Interaktives Programm Section */}
+            <div className={cardStyle}>
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="text-sm font-bold text-stone-500 uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles size={14} /> Interaktives Programm / Abstimmung
+                </h4>
+                <button
+                  type="button"
+                  onClick={handleAddActivity}
+                  className="flex items-center gap-2 bg-stone-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-stone-900 transition-colors"
+                >
+                  <Plus size={16} /> Hinzufügen
+                </button>
+              </div>
+              
+              {/* Activities List */}
+              <div className="space-y-3">
+                  {(config.activities || []).map((item) => (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-4 p-4 rounded-xl border ${item.isActive ? 'bg-stone-50 border-stone-200' : 'bg-stone-100 border-stone-200 opacity-70'}`}
+                    >
+                      <div className={`p-2.5 rounded-xl ${item.isActive ? 'text-blue-600 bg-blue-50' : 'text-stone-400 bg-stone-200'}`}>
+                        {item.isActive ? <Sparkles size={20} /> : <X size={20} />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-stone-800">{item.title}</p>
+                        {item.description && (
+                          <p className="text-sm text-stone-500 truncate max-w-md">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEditActivity(item)}
+                          className="p-2 text-stone-500 hover:text-stone-800 hover:bg-stone-200 rounded-lg transition-colors"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteActivity(item.id)}
+                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {(config.activities || []).length === 0 && (
+                    <p className="text-stone-400 text-sm italic text-center py-4">
+                      Noch keine Aktivitäten angelegt. Füge Aktivitäten hinzu, über die Gäste abstimmen können.
+                    </p>
+                  )}
+                </div>
+
+                {/* Activity Editor Modal */}
+                {editingActivityItem && (
+                  <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6">
+                      <h3 className="text-xl font-bold text-stone-800 mb-4">
+                        {isAddingActivity ? 'Aktivität hinzufügen' : 'Aktivität bearbeiten'}
+                      </h3>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className={labelStyle}>Titel</label>
+                          <input
+                            type="text"
+                            value={editingActivityItem.title}
+                            onChange={(e) =>
+                              setEditingActivityItem({ ...editingActivityItem, title: e.target.value })
+                            }
+                            className={inputStyle}
+                            placeholder="z.B. Spieleabend, Karaoke, Tanz..."
+                          />
+                        </div>
+
+                        <div>
+                          <label className={labelStyle}>Beschreibung (Optional)</label>
+                          <textarea
+                            rows={3}
+                            value={editingActivityItem.description || ''}
+                            onChange={(e) =>
+                              setEditingActivityItem({
+                                ...editingActivityItem,
+                                description: e.target.value,
+                              })
+                            }
+                            className={inputStyle}
+                            placeholder="z.B. Gemeinsam spielen wir Gesellschaftsspiele..."
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-3 p-4 bg-stone-50 rounded-xl border border-stone-200 cursor-pointer" onClick={() => setEditingActivityItem({ ...editingActivityItem, isActive: !editingActivityItem.isActive })}>
+                            <div className={`w-6 h-6 rounded-md border flex items-center justify-center ${editingActivityItem.isActive ? 'bg-stone-800 border-stone-800 text-white' : 'bg-white border-stone-300'}`}>
+                                {editingActivityItem.isActive && <Check size={14} />}
+                            </div>
+                            <span className="font-bold text-stone-700 text-sm">Aktiv (Sichtbar für Abstimmung)</span>
+                        </div>
+
+                      </div>
+
+                      <div className="flex gap-3 mt-6">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingActivityItem(null);
+                            setIsAddingActivity(false);
+                          }}
+                          className="flex-1 bg-stone-200 text-stone-700 py-3 rounded-xl font-bold hover:bg-stone-300 transition-colors"
+                        >
+                          Abbrechen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveActivity}
+                          disabled={!editingActivityItem.title}
+                          className="flex-1 bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Speichern
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+            </div>
+
+            {/* Ernährungs-Optionen Section */}
+            <div className={cardStyle}>
+              <h4 className="text-sm font-bold text-stone-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                <Leaf size={14} /> Ernährungs-Optionen
+              </h4>
               <div>
                 <label className={labelStyle}>Ernährungs-Optionen (Kommagetrennt)</label>
                 <input
@@ -1303,17 +1746,41 @@ export const AdminPage: React.FC = () => {
                   value={dietaryInput}
                   onChange={(e) => setDietaryInput(e.target.value)}
                   className={inputStyle}
+                  placeholder="z.B. Vegetarisch, Vegan, Glutenfrei..."
                 />
               </div>
+            </div>
 
+            {/* Beitragsvorschläge Section */}
+            <div className={cardStyle}>
+              <h4 className="text-sm font-bold text-stone-500 uppercase tracking-wider mb-6 flex items-center gap-2">
+                <Mic2 size={14} /> Beitragsvorschläge
+              </h4>
+              <div>
+                <label className={labelStyle}>Beitragsvorschläge (Kommagetrennt)</label>
+                <input
+                  type="text"
+                  value={contributionSuggestionsInput}
+                  onChange={(e) => setContributionSuggestionsInput(e.target.value)}
+                  className={inputStyle}
+                  placeholder="z.B. Gedicht vortragen, Fotografieren, Snacks mitbringen, Musik machen..."
+                />
+                <p className="text-xs text-stone-400 mt-2 italic">
+                  Diese Vorschläge werden als anklickbare Chips im Gästebereich angezeigt.
+                </p>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end">
               <button
                 type="submit"
-                className="w-full bg-stone-800 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-stone-900 flex items-center justify-center gap-2 transition-colors shadow-md mt-4"
+                className="bg-stone-800 text-white px-8 py-3.5 rounded-xl text-sm font-bold hover:bg-stone-900 flex items-center justify-center gap-2 transition-colors shadow-md"
               >
-                <Save size={16} /> Speichern
+                <Save size={16} /> Alle Änderungen speichern
               </button>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
       )}
 
@@ -1366,21 +1833,14 @@ export const AdminPage: React.FC = () => {
                       currentSort={sortConfigState}
                       onSort={requestSort}
                     />
-                    <SortHeader
-                      label="🎁"
-                      sortKey="isSecretSanta"
-                      currentSort={sortConfigState}
-                      onSort={requestSort}
-                    />
-                    <th className="p-4 font-semibold text-stone-600">Link</th>
+                    <th className="p-4 font-semibold text-stone-600">Aktionen</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-50">
                   {sortedParticipants.map((p) => (
                     <tr
                       key={p.id}
-                      className="hover:bg-stone-50 transition-colors cursor-pointer"
-                      onClick={() => setSelectedParticipant(p)}
+                      className="hover:bg-stone-50 transition-colors"
                     >
                       <td className="p-4">
                         <div className="flex items-center gap-3">
@@ -1390,8 +1850,17 @@ export const AdminPage: React.FC = () => {
                             image={p.avatarImage}
                             size={36}
                           />
-                          <div>
-                            <div className="font-bold text-stone-800 text-base">{p.name}</div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <div className="font-bold text-stone-800 text-base">{p.name}</div>
+                              {(p.notes || p.contribution) && (
+                                <StickyNote 
+                                  size={16} 
+                                  className="text-amber-500" 
+                                  title="Hat Notizen oder Wünsche"
+                                />
+                              )}
+                            </div>
                             <div className="text-stone-400 text-xs">{p.email}</div>
                             {p.plusOne && (
                               <div className="text-xmas-red text-xs mt-1 font-medium">
@@ -1427,25 +1896,43 @@ export const AdminPage: React.FC = () => {
                           <span className="text-stone-200">-</span>
                         )}
                       </td>
-                      <td className="p-4 text-stone-400">
-                        {p.status === 'attending' && p.isSecretSanta && (
-                          <Check size={16} className="text-xmas-gold" />
-                        )}
-                      </td>
                       <td className="p-4">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copyLink(p.id);
-                          }}
-                          className="text-stone-400 hover:text-stone-800 p-2 hover:bg-stone-100 rounded-full transition-all"
-                        >
-                          {copiedId === p.id ? (
-                            <Check size={16} className="text-green-600" />
-                          ) : (
-                            <Copy size={16} />
-                          )}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(`${window.location.origin}/#/p/${p.id}`, '_blank');
+                            }}
+                            className="text-stone-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-full transition-all"
+                            title="Link öffnen"
+                          >
+                            <ExternalLink size={16} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedParticipant(p);
+                            }}
+                            className="text-stone-400 hover:text-purple-600 p-2 hover:bg-purple-50 rounded-full transition-all"
+                            title="Details anzeigen"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyLink(p.id);
+                            }}
+                            className="text-stone-400 hover:text-stone-800 p-2 hover:bg-stone-100 rounded-full transition-all"
+                            title="Link kopieren"
+                          >
+                            {copiedId === p.id ? (
+                              <Check size={16} className="text-green-600" />
+                            ) : (
+                              <Copy size={16} />
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1938,18 +2425,127 @@ export const AdminPage: React.FC = () => {
                 </div>
               </div>
 
+            </div>
+
+            <div className="bg-stone-50 p-4 border-t border-stone-100 flex justify-between items-center">
+              <div className="text-xs text-stone-400">
+                Zuletzt aktualisiert: {new Date(selectedParticipant.lastUpdated).toLocaleString()}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleOpenQuickMessage}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-sm font-bold transition-colors"
+                >
+                  <Mail size={16} /> Nachricht
+                </button>
+                <button
+                  onClick={handleDeleteParticipant}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl text-sm font-bold transition-colors"
+                >
+                  <Trash2 size={16} /> Löschen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Message Editor Modal */}
+      {showQuickMessageEditor && selectedParticipant && (
+        <div
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
+          onClick={() => setShowQuickMessageEditor(false)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-stone-50 p-6 border-b border-stone-100 flex justify-between items-start shrink-0">
               <div>
-                <h4 className="font-bold text-stone-400 text-xs uppercase mb-4 flex items-center gap-2">
-                  <Wallet size={14} /> Zahlung
-                </h4>
-                <p className="text-stone-800 font-medium flex items-center gap-2">
-                  {selectedParticipant.wantsInvoice ? 'Rechnung (Überweisung)' : 'Bar (Quittung)'}
+                <h3 className="text-2xl font-serif font-bold text-stone-800">
+                  Nachricht senden
+                </h3>
+                <p className="text-stone-500 mt-1">
+                  An: {selectedParticipant.name} ({selectedParticipant.email})
                 </p>
+              </div>
+              <button
+                onClick={() => setShowQuickMessageEditor(false)}
+                className="text-stone-400 hover:text-stone-800 p-2 hover:bg-stone-200 rounded-full transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-8 overflow-y-auto flex-1">
+              <div className="space-y-4">
+                <div>
+                  <label className={labelStyle}>Betreff</label>
+                  <input
+                    type="text"
+                    value={quickMessageSubject}
+                    onChange={(e) => setQuickMessageSubject(e.target.value)}
+                    className={inputStyle}
+                    placeholder="Betreff der E-Mail"
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label className={labelStyle}>Nachricht</label>
+                  <textarea
+                    id="quick-message-body"
+                    value={quickMessageBody}
+                    onChange={(e) => setQuickMessageBody(e.target.value)}
+                    className={`${inputStyle} min-h-[300px] font-mono text-sm leading-relaxed`}
+                    placeholder="Nachricht..."
+                  />
+                </div>
+
+                {/* Variable Helpers */}
+                <div>
+                  <label className={labelStyle}>Variablen einfügen</label>
+                  <div className="flex flex-wrap gap-2">
+                    {EMAIL_VARIABLES.map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => insertQuickMessageVariable(v)}
+                        className="px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs rounded-md border border-stone-200 transition-colors font-mono"
+                        title={`Fügt ${v} hinzu`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="bg-stone-50 p-4 text-center text-xs text-stone-400 border-t border-stone-100">
-              Zuletzt aktualisiert: {new Date(selectedParticipant.lastUpdated).toLocaleString()}
+            <div className="bg-stone-50 p-4 border-t border-stone-100 flex justify-end gap-3 shrink-0">
+              <button
+                onClick={() => {
+                  setShowQuickMessageEditor(false);
+                  setQuickMessageSubject('');
+                  setQuickMessageBody('');
+                }}
+                className="px-4 py-2 text-stone-600 hover:text-stone-800 font-bold transition-colors"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleSendQuickMessage}
+                disabled={isSending || !quickMessageSubject.trim() || !quickMessageBody.trim()}
+                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSending ? (
+                  <>
+                    <Sparkles className="animate-spin" size={16} /> Sende...
+                  </>
+                ) : (
+                  <>
+                    <Send size={16} /> Senden
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

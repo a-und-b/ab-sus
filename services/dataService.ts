@@ -10,6 +10,7 @@ import {
   FoodCategory,
   ProgramItem,
   BuffetCategoryConfig,
+  ActivityItem,
 } from '../types';
 import { supabase } from './supabase';
 
@@ -37,9 +38,8 @@ function participantToDb(p: Participant) {
     food_contains_nuts: p.food?.containsNuts || false,
     show_name_in_buffet: p.showNameInBuffet !== false,
     allergies: p.allergies || null,
-    is_secret_santa: p.isSecretSanta || false,
-    wants_invoice: p.wantsInvoice || false,
     contribution: p.contribution || null,
+    activity_votes: p.activityVotes || [],
     notes: p.notes || null,
     last_updated: p.lastUpdated,
   };
@@ -73,9 +73,8 @@ function participantFromDb(row: Record<string, unknown>): Participant {
     food,
     showNameInBuffet: row.show_name_in_buffet !== false,
     allergies: (row.allergies as string) || undefined,
-    isSecretSanta: (row.is_secret_santa as boolean) || false,
-    wantsInvoice: (row.wants_invoice as boolean) || false,
     contribution: (row.contribution as string) || undefined,
+    activityVotes: (row.activity_votes as string[]) || [],
     notes: (row.notes as string) || undefined,
     lastUpdated: (row.last_updated as string) || new Date().toISOString(),
   };
@@ -91,12 +90,13 @@ function configToDb(c: EventConfig) {
     location: c.location,
     max_guests: c.maxGuests,
     allow_plus_one: c.allowPlusOne,
-    secret_santa_limit: c.secretSantaLimit,
     dietary_options: c.dietaryOptions,
     cost: c.cost,
     hosts: c.hosts,
     program: JSON.stringify(c.program), // Serialize program to JSON
     buffet_config: c.buffetConfig,
+    activities: c.activities || [],
+    contribution_suggestions: c.contributionSuggestions || [],
     contact_email: c.contactEmail,
     contact_phone: c.contactPhone || null,
     rsvp_deadline: c.rsvpDeadline,
@@ -138,6 +138,12 @@ function configFromDb(row: Record<string, unknown>): EventConfig {
     buffetConfig = row.buffet_config as BuffetCategoryConfig[];
   }
 
+  let activities: ActivityItem[] = DEFAULT_EVENT_CONFIG.activities;
+  if (row.activities) {
+    // Supabase returns JSONB as object/array
+    activities = row.activities as ActivityItem[];
+  }
+
   return {
     title: row.title as string,
     subtitle: (row.subtitle as string) || '',
@@ -146,12 +152,13 @@ function configFromDb(row: Record<string, unknown>): EventConfig {
     location: (row.location as string) || '',
     maxGuests: (row.max_guests as number) || 30,
     allowPlusOne: (row.allow_plus_one as boolean) || false,
-    secretSantaLimit: (row.secret_santa_limit as number) || 15,
     dietaryOptions: (row.dietary_options as string[]) || [],
     cost: (row.cost as string) || '',
     hosts: (row.hosts as string) || '',
     program,
     buffetConfig,
+    activities,
+    contributionSuggestions: (row.contribution_suggestions as string[]) || DEFAULT_EVENT_CONFIG.contributionSuggestions,
     contactEmail: (row.contact_email as string) || '',
     contactPhone: (row.contact_phone as string) || '',
     rsvpDeadline: (row.rsvp_deadline as string) || '',
@@ -171,22 +178,22 @@ function templateToDb(t: EmailTemplate) {
 
 function templateFromDb(row: Record<string, unknown>): EmailTemplate {
   return {
-    id: row.id,
-    name: row.name,
-    subject: row.subject,
-    body: row.body,
+    id: row.id as string,
+    name: row.name as string,
+    subject: row.subject as string,
+    body: row.body as string,
     trigger: row.trigger as EmailTemplate['trigger'],
-    description: row.description || '',
+    description: (row.description as string) || '',
   };
 }
 
 function logFromDb(row: Record<string, unknown>): EmailLog {
   return {
-    id: row.id,
-    date: row.date,
-    templateName: row.template_name,
-    recipientCount: row.recipient_count,
-    recipientsPreview: row.recipients_preview || '',
+    id: row.id as string,
+    date: row.date as string,
+    templateName: row.template_name as string,
+    recipientCount: row.recipient_count as number,
+    recipientsPreview: (row.recipients_preview as string) || '',
     status: row.status as 'sent' | 'failed',
   };
 }
@@ -236,8 +243,6 @@ class DataService {
       avatarStyle: randomStyle,
       avatarSeed: name.trim(),
       showNameInBuffet: true,
-      isSecretSanta: false,
-      wantsInvoice: false,
       contribution: '',
       lastUpdated: new Date().toISOString(),
     };
@@ -284,6 +289,71 @@ class DataService {
       return null;
     }
     return participantFromDb(data);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    console.log('Attempting to delete participant with ID:', id);
+    
+    // Check authentication status
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('Current auth session:', session ? 'Authenticated' : 'Not authenticated');
+    if (session) {
+      console.log('User ID:', session.user.id);
+    }
+    
+    // First, verify the participant exists
+    const existing = await this.getById(id);
+    if (!existing) {
+      console.error('Participant not found with ID:', id);
+      // Try to find all participants to see what IDs exist
+      const all = await this.getAll();
+      console.log('Available participant IDs:', all.map(p => p.id));
+      return false;
+    }
+    
+    console.log('Found participant to delete:', existing.name, existing.email);
+    
+    // Try to delete - Supabase will use the current session automatically
+    const { data, error } = await supabase
+      .from('participants')
+      .delete()
+      .eq('id', id)
+      .select();
+    
+    if (error) {
+      console.error('Error deleting participant:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      
+      // Check if it's an RLS policy error
+      if (error.code === '42501' || error.message?.includes('policy') || error.message?.includes('permission')) {
+        console.error('RLS Policy Error: The Row Level Security policy is blocking deletion.');
+        console.error('Please check your Supabase RLS policies for the participants table.');
+        console.error('The policy should allow DELETE operations for authenticated users.');
+      }
+      return false;
+    }
+    
+    // Check if anything was deleted
+    if (data && data.length > 0) {
+      console.log('Successfully deleted participant:', data[0]);
+      return true;
+    }
+    
+    // Verify deletion by checking if it still exists
+    const stillExists = await this.getById(id);
+    if (stillExists) {
+      console.warn('Participant still exists after delete attempt.');
+      console.warn('This usually means RLS policy is blocking deletion.');
+      console.warn('Please check your Supabase RLS policies for the participants table.');
+      console.warn('You may need to add a policy like:');
+      console.warn("CREATE POLICY \"Allow authenticated delete\" ON participants FOR DELETE USING (auth.role() = 'authenticated');");
+      return false;
+    }
+    
+    console.log('Successfully deleted participant:', existing.name);
+    return true;
   }
 
   async reset(): Promise<void> {
@@ -393,7 +463,6 @@ class DataService {
         '{{location}}': config.location,
         '{{cost}}': config.cost,
         '{{hosts}}': config.hosts,
-        '{{secretSantaLimit}}': config.secretSantaLimit.toString(),
         '{{guestCount}}': attendingCount.toString(),
         '{{food}}': p.food?.name || 'noch nichts eingetragen',
         '{{plusOne}}': p.plusOne || 'keine',

@@ -11,7 +11,6 @@ interface Message {
 const EXAMPLE_QUESTIONS = [
   "Wann geht's los?",
   'Was soll ich mitbringen?',
-  'Wie funktioniert das Wichteln?',
   'Gibt es einen Dresscode?',
   'Wie ist der Ablauf?',
 ];
@@ -49,7 +48,6 @@ export const Chatbot: React.FC = () => {
     Fakten: Datum ${config.date}, Ort ${config.location}, Gäste ${attending.length}/${config.maxGuests}.
     Buffet: ${foodList}.
     Programm: ${config.program}.
-    Wichteln: Max ${config.secretSantaLimit}€.
     Sei kurz, hilfreich und weihnachtlich.`;
   };
 
