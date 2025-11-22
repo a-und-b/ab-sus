@@ -100,6 +100,14 @@ export interface Participant {
   lastUpdated: string; // ISO Date
 }
 
+export interface ProgramItem {
+  id: string;
+  title: string;
+  description: string;
+  icon: string; // Name of the icon (e.g., 'Wine', 'Music')
+  color: string; // Tailwind color classes (e.g., 'text-red-500 bg-red-50')
+}
+
 export interface EventConfig {
   title: string;
   subtitle: string;
@@ -112,8 +120,9 @@ export interface EventConfig {
   dietaryOptions: string[];
   cost: string; // e.g. "25 € pro Person"
   hosts: string; // e.g. "Holger, Daniela..."
-  program: string; // Comma separated list of highlights
+  program: ProgramItem[]; // Structured program highlights
   contactEmail: string;
+  contactPhone?: string; // Optional contact phone number
   rsvpDeadline: string; // ISO Date String YYYY-MM-DD
 }
 
@@ -136,9 +145,45 @@ export const DEFAULT_EVENT_CONFIG: EventConfig = {
   ],
   cost: '25 € pro Person',
   hosts: 'Holger, Daniela, Finn und Judith',
-  program:
-    'Glühwein-Empfang, Gemeinsames Buffet, Fackelwanderung, Ugly Christmas Sweater Wettbewerb, Musik & Feuerschale',
+  program: [
+    {
+      id: 'gluehwein',
+      title: 'Glühwein-Empfang',
+      description: 'Wir starten gemütlich am Feuer mit heißen Getränken.',
+      icon: 'Wine',
+      color: 'text-red-500 bg-red-50',
+    },
+    {
+      id: 'buffet',
+      title: 'Gemeinsames Buffet',
+      description: 'Jeder steuert etwas bei – von Herzhaft bis Süß.',
+      icon: 'Utensils',
+      color: 'text-amber-500 bg-amber-50',
+    },
+    {
+      id: 'fackelwanderung',
+      title: 'Fackelwanderung',
+      description: 'Ein stimmungsvoller Spaziergang durch die Winternacht.',
+      icon: 'Flame',
+      color: 'text-orange-500 bg-orange-50',
+    },
+    {
+      id: 'sweater',
+      title: 'Ugly Christmas Sweater Wettbewerb',
+      description: 'Zieh dein schrägstes Teil an und gewinne Ruhm & Ehre!',
+      icon: 'Snowflake',
+      color: 'text-blue-500 bg-blue-50',
+    },
+    {
+      id: 'music',
+      title: 'Musik & Feuerschale',
+      description: 'Ausklang mit guten Gesprächen und Knistern.',
+      icon: 'Music',
+      color: 'text-purple-500 bg-purple-50',
+    },
+  ],
   contactEmail: 'info@selbst-und-selig.de',
+  contactPhone: '',
   rsvpDeadline: '2025-12-10',
 };
 

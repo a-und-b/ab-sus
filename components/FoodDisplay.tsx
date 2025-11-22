@@ -38,10 +38,12 @@ export const FoodDisplay: React.FC<FoodDisplayProps> = ({ participants }) => {
   return (
     <div className="bg-white rounded-3xl shadow-xl shadow-stone-200/50 border border-white overflow-hidden sticky top-24">
       <div className="p-6 border-b border-stone-100 bg-stone-50/50">
-        <h3 className="font-serif font-bold text-xmas-dark text-xl flex items-center gap-2">
-          <ChefHat className="text-xmas-gold" size={24} /> Das Buffet
+        <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
+          <div className="bg-amber-50 p-2 rounded-xl text-amber-600">
+            <ChefHat size={24} />
+          </div>
+          Das Buffet
         </h3>
-        <p className="text-sm text-stone-500 mt-1">Ein Blick auf unsere kulinarische Reise.</p>
       </div>
 
       <div className="p-6 space-y-8">

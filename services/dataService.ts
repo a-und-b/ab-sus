@@ -8,6 +8,7 @@ import {
   DEFAULT_EMAIL_TEMPLATES,
   FoodItem,
   FoodCategory,
+  ProgramItem,
 } from '../types';
 import { supabase } from './supabase';
 
@@ -93,13 +94,42 @@ function configToDb(c: EventConfig) {
     dietary_options: c.dietaryOptions,
     cost: c.cost,
     hosts: c.hosts,
-    program: c.program,
+    program: JSON.stringify(c.program), // Serialize program to JSON
     contact_email: c.contactEmail,
+    contact_phone: c.contactPhone || null,
     rsvp_deadline: c.rsvpDeadline,
   };
 }
 
 function configFromDb(row: Record<string, unknown>): EventConfig {
+  // Parse program from JSON, with backward compatibility for comma-separated strings
+  let program: ProgramItem[] = [];
+  if (row.program) {
+    try {
+      const parsed = typeof row.program === 'string' ? JSON.parse(row.program) : row.program;
+      if (Array.isArray(parsed)) {
+        program = parsed;
+      } else {
+        throw new Error('Not an array');
+      }
+    } catch {
+      // Backward compatibility: convert comma-separated string to basic ProgramItem objects
+      if (typeof row.program === 'string') {
+        program = row.program
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .map((title, index) => ({
+            id: `item-${index}`,
+            title,
+            description: '',
+            icon: 'Sparkles',
+            color: 'text-stone-400 bg-stone-50',
+          }));
+      }
+    }
+  }
+
   return {
     title: row.title,
     subtitle: row.subtitle || '',
@@ -112,8 +142,9 @@ function configFromDb(row: Record<string, unknown>): EventConfig {
     dietaryOptions: row.dietary_options || [],
     cost: row.cost || '',
     hosts: row.hosts || '',
-    program: row.program || '',
+    program,
     contactEmail: row.contact_email || '',
+    contactPhone: row.contact_phone || '',
     rsvpDeadline: row.rsvp_deadline || '',
   };
 }

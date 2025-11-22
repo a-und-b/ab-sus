@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Participant, EventConfig, EmailTemplate, EmailLog } from '../types';
+import { Participant, EventConfig, EmailTemplate, EmailLog, ProgramItem } from '../types';
 import { dataService } from '../services/dataService';
 import { supabase } from '../services/supabase';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -38,6 +38,16 @@ import {
   Code,
   Wallet,
   LogOut,
+  Utensils,
+  Flame,
+  Snowflake,
+  Music,
+  PartyPopper,
+  GripVertical,
+  Plus,
+  Trash2,
+  Edit,
+  Gift,
 } from 'lucide-react';
 import { Avatar } from '../components/Avatar';
 import { LoginPage } from '../components/LoginPage';
@@ -106,7 +116,10 @@ export const AdminPage: React.FC = () => {
 
   // Config Inputs
   const [dietaryInput, setDietaryInput] = useState('');
-  const [programInput, setProgramInput] = useState('');
+  
+  // Program Editor State
+  const [editingProgramItem, setEditingProgramItem] = useState<ProgramItem | null>(null);
+  const [isAddingProgram, setIsAddingProgram] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -122,7 +135,6 @@ export const AdminPage: React.FC = () => {
       setParticipants(participantsData);
       setConfig(configData);
       setDietaryInput(configData.dietaryOptions.join(', '));
-      setProgramInput(configData.program || '');
       setTemplates(templatesData);
       setEmailLogs(logsData);
     } catch (error) {
@@ -201,7 +213,6 @@ export const AdminPage: React.FC = () => {
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean),
-        program: programInput,
       };
 
       try {
@@ -214,6 +225,64 @@ export const AdminPage: React.FC = () => {
         setConfigFeedback('Fehler beim Speichern!');
         setTimeout(() => setConfigFeedback(null), 3000);
       }
+    }
+  };
+
+  // Program Management Functions
+  const handleAddProgramItem = () => {
+    setEditingProgramItem({
+      id: `item-${Date.now()}`,
+      title: '',
+      description: '',
+      icon: 'Sparkles',
+      color: 'text-stone-400 bg-stone-50',
+    });
+    setIsAddingProgram(true);
+  };
+
+  const handleEditProgramItem = (item: ProgramItem) => {
+    setEditingProgramItem(item);
+    setIsAddingProgram(false);
+  };
+
+  const handleSaveProgramItem = async () => {
+    if (!editingProgramItem || !config) return;
+    
+    let updatedProgram: ProgramItem[];
+    if (isAddingProgram) {
+      updatedProgram = [...config.program, editingProgramItem];
+    } else {
+      updatedProgram = config.program.map((item) =>
+        item.id === editingProgramItem.id ? editingProgramItem : item
+      );
+    }
+
+    try {
+      await dataService.updateConfig({ ...config, program: updatedProgram });
+      await loadData();
+      setEditingProgramItem(null);
+      setIsAddingProgram(false);
+      setConfigFeedback('Programmpunkt gespeichert!');
+      setTimeout(() => setConfigFeedback(null), 3000);
+    } catch (err) {
+      console.error('Failed to save program item:', err);
+      setConfigFeedback('Fehler beim Speichern!');
+      setTimeout(() => setConfigFeedback(null), 3000);
+    }
+  };
+
+  const handleDeleteProgramItem = async (itemId: string) => {
+    if (!config) return;
+    if (!confirm('Diesen Programmpunkt wirklich löschen?')) return;
+
+    const updatedProgram = config.program.filter((item) => item.id !== itemId);
+    try {
+      await dataService.updateConfig({ ...config, program: updatedProgram });
+      await loadData();
+      setConfigFeedback('Programmpunkt gelöscht!');
+      setTimeout(() => setConfigFeedback(null), 3000);
+    } catch (err) {
+      console.error('Failed to delete program item:', err);
     }
   };
 
@@ -501,6 +570,29 @@ export const AdminPage: React.FC = () => {
     '{{food}}',
     '{{cost}}',
     '{{plusOne}}',
+  ];
+
+  // Available icons for program items
+  const AVAILABLE_ICONS = [
+    { name: 'Wine', component: Wine, label: 'Wein' },
+    { name: 'Utensils', component: Utensils, label: 'Besteck' },
+    { name: 'Flame', component: Flame, label: 'Feuer' },
+    { name: 'Snowflake', component: Snowflake, label: 'Schneeflocke' },
+    { name: 'Music', component: Music, label: 'Musik' },
+    { name: 'PartyPopper', component: PartyPopper, label: 'Party' },
+    { name: 'Sparkles', component: Sparkles, label: 'Funken' },
+    { name: 'Gift', component: Gift, label: 'Geschenk' },
+  ];
+
+  const AVAILABLE_COLORS = [
+    { value: 'text-red-500 bg-red-50', label: 'Rot' },
+    { value: 'text-amber-500 bg-amber-50', label: 'Bernstein' },
+    { value: 'text-orange-500 bg-orange-50', label: 'Orange' },
+    { value: 'text-blue-500 bg-blue-50', label: 'Blau' },
+    { value: 'text-purple-500 bg-purple-50', label: 'Lila' },
+    { value: 'text-green-500 bg-green-50', label: 'Grün' },
+    { value: 'text-pink-500 bg-pink-50', label: 'Pink' },
+    { value: 'text-stone-500 bg-stone-50', label: 'Grau' },
   ];
 
   if (!isAuthenticated) {
@@ -850,13 +942,180 @@ export const AdminPage: React.FC = () => {
               </div>
 
               <div>
-                <label className={labelStyle}>Programm-Highlights (Kommagetrennt)</label>
-                <textarea
-                  rows={2}
-                  value={programInput}
-                  onChange={(e) => setProgramInput(e.target.value)}
+                <label className={labelStyle}>Kontakt-Telefon</label>
+                <input
+                  type="text"
+                  value={config.contactPhone || ''}
+                  onChange={(e) => setConfig({ ...config, contactPhone: e.target.value })}
                   className={inputStyle}
+                  placeholder="z.B. +49 123 456789"
                 />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <label className={labelStyle}>Programm-Highlights</label>
+                  <button
+                    type="button"
+                    onClick={handleAddProgramItem}
+                    className="flex items-center gap-2 bg-stone-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-stone-900 transition-colors"
+                  >
+                    <Plus size={16} /> Hinzufügen
+                  </button>
+                </div>
+                
+                {/* Program Items List */}
+                <div className="space-y-3 mb-4">
+                  {config.program.map((item) => {
+                    const IconComponent = AVAILABLE_ICONS.find((i) => i.name === item.icon)?.component || Sparkles;
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-4 p-4 bg-stone-50 rounded-xl border border-stone-200"
+                      >
+                        <div className={`p-2.5 rounded-xl ${item.color}`}>
+                          <IconComponent size={20} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-stone-800">{item.title}</p>
+                          <p className="text-sm text-stone-500">{item.description}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEditProgramItem(item)}
+                            className="p-2 text-stone-500 hover:text-stone-800 hover:bg-stone-200 rounded-lg transition-colors"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProgramItem(item.id)}
+                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Program Item Editor Modal */}
+                {editingProgramItem && (
+                  <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6">
+                      <h3 className="text-xl font-bold text-stone-800 mb-4">
+                        {isAddingProgram ? 'Programmpunkt hinzufügen' : 'Programmpunkt bearbeiten'}
+                      </h3>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className={labelStyle}>Titel</label>
+                          <input
+                            type="text"
+                            value={editingProgramItem.title}
+                            onChange={(e) =>
+                              setEditingProgramItem({ ...editingProgramItem, title: e.target.value })
+                            }
+                            className={inputStyle}
+                            placeholder="z.B. Glühwein-Empfang"
+                          />
+                        </div>
+
+                        <div>
+                          <label className={labelStyle}>Beschreibung</label>
+                          <textarea
+                            rows={2}
+                            value={editingProgramItem.description}
+                            onChange={(e) =>
+                              setEditingProgramItem({
+                                ...editingProgramItem,
+                                description: e.target.value,
+                              })
+                            }
+                            className={inputStyle}
+                            placeholder="z.B. Wir starten gemütlich am Feuer..."
+                          />
+                        </div>
+
+                        <div>
+                          <label className={labelStyle}>Icon</label>
+                          <div className="grid grid-cols-4 gap-2">
+                            {AVAILABLE_ICONS.map((icon) => {
+                              const IconComp = icon.component;
+                              const isSelected = editingProgramItem.icon === icon.name;
+                              return (
+                                <button
+                                  key={icon.name}
+                                  type="button"
+                                  onClick={() =>
+                                    setEditingProgramItem({ ...editingProgramItem, icon: icon.name })
+                                  }
+                                  className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                                    isSelected
+                                      ? 'border-stone-800 bg-stone-100'
+                                      : 'border-stone-200 hover:border-stone-400'
+                                  }`}
+                                >
+                                  <IconComp size={24} />
+                                  <span className="text-xs font-medium">{icon.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className={labelStyle}>Farbe</label>
+                          <div className="grid grid-cols-4 gap-2">
+                            {AVAILABLE_COLORS.map((color) => {
+                              const isSelected = editingProgramItem.color === color.value;
+                              return (
+                                <button
+                                  key={color.value}
+                                  type="button"
+                                  onClick={() =>
+                                    setEditingProgramItem({ ...editingProgramItem, color: color.value })
+                                  }
+                                  className={`p-3 rounded-xl border-2 transition-all ${
+                                    isSelected
+                                      ? 'border-stone-800'
+                                      : 'border-stone-200 hover:border-stone-400'
+                                  }`}
+                                >
+                                  <div className={`w-full h-8 rounded-lg ${color.value}`}></div>
+                                  <span className="text-xs font-medium mt-1 block">{color.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 mt-6">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingProgramItem(null);
+                            setIsAddingProgram(false);
+                          }}
+                          className="flex-1 bg-stone-200 text-stone-700 py-3 rounded-xl font-bold hover:bg-stone-300 transition-colors"
+                        >
+                          Abbrechen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveProgramItem}
+                          disabled={!editingProgramItem.title}
+                          className="flex-1 bg-stone-800 text-white py-3 rounded-xl font-bold hover:bg-stone-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Speichern
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

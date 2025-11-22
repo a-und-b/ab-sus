@@ -46,6 +46,7 @@ import {
   Lock,
   ChevronRight,
   MapPin,
+  Phone,
 } from 'lucide-react';
 import { supabase as supabaseClient } from '../services/supabase';
 
@@ -55,21 +56,20 @@ interface GuestPageProps {
 
 type GuestTab = 'info' | 'list' | 'action';
 
-// Helper for rich program display
-const PROGRAM_ENRICHMENT: Record<string, { desc: string; icon: React.ElementType; color: string }> =
-  {
-    'Glühwein-Empfang': {
-      desc: 'Heiße Getänke und ein buntes, abwechslungsreiches Buffet zu dem jeder etwas beiträgt.',
-      icon: Wine,
-      color: 'text-red-500 bg-red-50',
-    },
-    'Optional': {
-      desc: 'Fackelwanderung, Wichteln und ein Ugly Christmas Sweater Wettbewerb mit.  ',
-      icon: Snowflake,
-      color: 'text-blue-500 bg-blue-50',
-    },
-
+// Helper to get icon component by name
+const getIconComponent = (iconName: string): React.ElementType => {
+  const iconMap: Record<string, React.ElementType> = {
+    Wine,
+    Utensils,
+    Flame,
+    Snowflake,
+    Music,
+    PartyPopper,
+    Sparkles,
+    Gift,
   };
+  return iconMap[iconName] || Sparkles;
+};
 
 export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
   const [participant, setParticipant] = useState<Participant | null>(null);
@@ -559,14 +559,16 @@ END:VCALENDAR`;
     'w-full p-3.5 bg-white border border-stone-200 text-stone-900 placeholder-stone-400 rounded-xl focus:ring-2 focus:ring-xmas-gold/50 focus:border-xmas-gold outline-none transition-all shadow-sm hover:border-stone-300';
   const labelStyle = 'text-sm text-stone-900 font-semibold tracking-tight ml-1';
   const sectionCardStyle =
-    'bg-white p-6 md:p-8 rounded-3xl shadow-xl shadow-stone-900/10 border border-white transition-all hover:shadow-2xl hover:shadow-stone-900/20';
+    'bg-white rounded-3xl shadow-xl shadow-stone-900/10 border border-white transition-all hover:shadow-2xl hover:shadow-stone-900/20 overflow-hidden';
+  const cardHeaderStyle = 'p-6 border-b border-stone-100 bg-stone-50/50';
+  const cardContentStyle = 'p-6 md:p-8';
 
   // --- RENDER SECTIONS ---
 
   const renderAvatarSection = () => (
     <div className={isOnboarding ? '' : sectionCardStyle}>
       {!isOnboarding && (
-        <div className="flex justify-between items-start mb-6">
+        <div className={cardHeaderStyle}>
           <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
             <div className="bg-xmas-pink/20 p-2 rounded-xl text-xmas-pink">
               <User size={24} />
@@ -575,82 +577,84 @@ END:VCALENDAR`;
           </h3>
         </div>
       )}
-      <div className="flex flex-col sm:flex-row gap-8 items-center">
-        <div className="shrink-0">
-          <Avatar
-            style={avatarStyle}
-            seed={avatarSeed}
-            image={avatarImage}
-            size={100}
-            className="shadow-lg ring-4 ring-stone-50"
-          />
-        </div>
-        <div className="flex-grow w-full">
-          <div className="flex bg-stone-100 p-1 rounded-xl mb-4">
-            <button
-              onClick={() => setAvatarTab('manual')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${avatarTab === 'manual' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500 hover:text-stone-700'}`}
-            >
-              🎨 Vorlage
-            </button>
-            <button
-              onClick={() => setAvatarTab('ai')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${avatarTab === 'ai' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500 hover:text-stone-700'}`}
-            >
-              ✨ KI-Generierung
-            </button>
+      <div className={isOnboarding ? '' : cardContentStyle}>
+        <div className="flex flex-col sm:flex-row gap-8 items-center">
+          <div className="shrink-0">
+            <Avatar
+              style={avatarStyle}
+              seed={avatarSeed}
+              image={avatarImage}
+              size={100}
+              className="shadow-lg ring-4 ring-stone-50"
+            />
           </div>
-          {avatarTab === 'manual' ? (
-            <div className="flex gap-2">
-              <select
-                value={avatarStyle}
-                onChange={(e) => {
-                  setAvatarStyle(e.target.value as AvatarStyle);
-                  setAvatarImage('');
-                }}
-                className="p-2.5 bg-white border border-stone-200 rounded-xl text-sm font-medium outline-none w-full"
-              >
-                {Object.entries(AVATAR_STYLES).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+          <div className="flex-grow w-full">
+            <div className="flex bg-stone-100 p-1 rounded-xl mb-4">
               <button
-                type="button"
-                onClick={() => {
-                  setAvatarSeed(Math.random().toString(36));
-                  setAvatarImage('');
-                }}
-                className="p-2.5 bg-stone-100 text-stone-600 rounded-xl hover:bg-stone-200 transition-colors"
+                onClick={() => setAvatarTab('manual')}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${avatarTab === 'manual' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500 hover:text-stone-700'}`}
               >
-                <RefreshCw size={20} />
+                🎨 Vorlage
+              </button>
+              <button
+                onClick={() => setAvatarTab('ai')}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${avatarTab === 'ai' ? 'bg-white shadow-sm text-stone-800' : 'text-stone-500 hover:text-stone-700'}`}
+              >
+                ✨ KI-Generierung
               </button>
             </div>
-          ) : (
-            <div className="space-y-2">
-              <form onSubmit={generateAiAvatar} className="flex gap-2">
-                <input
-                  type="text"
-                  value={avatarPrompt}
-                  onChange={(e) => setAvatarPrompt(e.target.value)}
-                  placeholder="z.B. Schneemann..."
-                  className="flex-grow p-2.5 bg-white border border-stone-200 rounded-xl text-sm outline-none focus:border-xmas-gold"
-                />
-                <button
-                  type="submit"
-                  disabled={isGeneratingAvatar || !avatarPrompt}
-                  className="bg-xmas-gold text-white p-2.5 rounded-xl hover:bg-yellow-600 disabled:opacity-50"
+            {avatarTab === 'manual' ? (
+              <div className="flex gap-2">
+                <select
+                  value={avatarStyle}
+                  onChange={(e) => {
+                    setAvatarStyle(e.target.value as AvatarStyle);
+                    setAvatarImage('');
+                  }}
+                  className="p-2.5 bg-white border border-stone-200 rounded-xl text-sm font-medium outline-none w-full"
                 >
-                  {isGeneratingAvatar ? (
-                    <Loader2 size={20} className="animate-spin" />
-                  ) : (
-                    <Wand2 size={20} />
-                  )}
+                  {Object.entries(AVATAR_STYLES).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvatarSeed(Math.random().toString(36));
+                    setAvatarImage('');
+                  }}
+                  className="p-2.5 bg-stone-100 text-stone-600 rounded-xl hover:bg-stone-200 transition-colors"
+                >
+                  <RefreshCw size={20} />
                 </button>
-              </form>
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <form onSubmit={generateAiAvatar} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={avatarPrompt}
+                    onChange={(e) => setAvatarPrompt(e.target.value)}
+                    placeholder="z.B. Schneemann..."
+                    className="flex-grow p-2.5 bg-white border border-stone-200 rounded-xl text-sm outline-none focus:border-xmas-gold"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isGeneratingAvatar || !avatarPrompt}
+                    className="bg-xmas-gold text-white p-2.5 rounded-xl hover:bg-yellow-600 disabled:opacity-50"
+                  >
+                    {isGeneratingAvatar ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <Wand2 size={20} />
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -661,35 +665,39 @@ END:VCALENDAR`;
 
     return (
       <div className={isOnboarding ? 'mt-8' : sectionCardStyle}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
-            <div className="bg-xmas-red/10 p-2 rounded-xl text-xmas-red">
-              <HeartHandshake size={24} />
-            </div>
-            Begleitung
-          </h3>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={hasPlusOne}
-              onChange={(e) => setHasPlusOne(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-12 h-7 bg-stone-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-xmas-green"></div>
-          </label>
-        </div>
-        {hasPlusOne && (
-          <div className="animate-fade-in pt-2">
-            <label className={`${labelStyle} block mb-2`}>Name der Begleitung</label>
-            <input
-              type="text"
-              value={plusOne}
-              onChange={(e) => setPlusOne(e.target.value)}
-              placeholder="Vorname Nachname"
-              className={inputStyle}
-            />
+        {!isOnboarding && (
+          <div className={`${cardHeaderStyle} flex items-center justify-between`}>
+            <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
+              <div className="bg-xmas-red/10 p-2 rounded-xl text-xmas-red">
+                <HeartHandshake size={24} />
+              </div>
+              Begleitung
+            </h3>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hasPlusOne}
+                onChange={(e) => setHasPlusOne(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-12 h-7 bg-stone-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-xmas-green"></div>
+            </label>
           </div>
         )}
+        <div className={isOnboarding ? '' : cardContentStyle}>
+          {hasPlusOne && (
+            <div className="animate-fade-in">
+              <label className={`${labelStyle} block mb-2`}>Name der Begleitung</label>
+              <input
+                type="text"
+                value={plusOne}
+                onChange={(e) => setPlusOne(e.target.value)}
+                placeholder="Vorname Nachname"
+                className={inputStyle}
+              />
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -698,7 +706,17 @@ END:VCALENDAR`;
     <div
       className={`${isOnboarding ? '' : sectionCardStyle} ${hasTriedNextStep && (!foodName || foodName.trim().length === 0) ? 'ring-2 ring-red-200' : ''}`}
     >
-      <div className="space-y-6">
+      {!isOnboarding && (
+        <div className={cardHeaderStyle}>
+          <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
+            <div className="bg-green-50 p-2 rounded-xl text-green-600">
+              <Utensils size={24} />
+            </div>
+            Dein Beitrag zum Buffet
+          </h3>
+        </div>
+      )}
+      <div className={`${isOnboarding ? '' : cardContentStyle} space-y-6`}>
         {/* 1. Kategorie (Category) */}
         <div>
           <label className={`${labelStyle} block mb-2`}>Kategorie</label>
@@ -799,14 +817,16 @@ END:VCALENDAR`;
   const renderDetailsSection = () => (
     <div className={isOnboarding ? '' : sectionCardStyle}>
       {!isOnboarding && (
-        <h3 className="font-serif text-2xl text-xmas-dark mb-6 flex items-center gap-3">
-          <div className="bg-emerald-50 p-2 rounded-xl text-emerald-600">
-            <Sparkles size={24} />
-          </div>
-          Details & Wünsche
-        </h3>
+        <div className={cardHeaderStyle}>
+          <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
+            <div className="bg-emerald-50 p-2 rounded-xl text-emerald-600">
+              <Sparkles size={24} />
+            </div>
+            Details & Wünsche
+          </h3>
+        </div>
       )}
-      <div className="space-y-8">
+      <div className={`${isOnboarding ? '' : cardContentStyle} space-y-8`}>
         <div>
           <label className={`${labelStyle} mb-2 flex items-center gap-2`}>
             <AlertCircle size={16} className="text-xmas-red" /> Ernährungsweise &
@@ -1100,7 +1120,7 @@ END:VCALENDAR`;
       {/* Navigation Tabs (Hidden if pending or onboarding) */}
       {!isOnboarding && status !== 'pending' && (
         <div className="flex justify-center mb-8 sticky top-4 z-40">
-          <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-full inline-flex shadow-xl shadow-stone-200/50 border border-white/50">
+          <div className="bg-white/80 backdrop-blur-md p-1.5 px-2 py-1 rounded-full inline-flex shadow-xl shadow-stone-200/50 border border-white/50">
             <button
               onClick={() => setActiveTab('info')}
               className={`px-6 py-3 rounded-full font-medium text-sm flex items-center gap-2 transition-all ${activeTab === 'info' ? 'bg-xmas-gold text-stone-900 shadow-sm transform scale-105' : 'text-stone-500 hover:text-stone-900 hover:bg-stone-50'}`}
@@ -1143,49 +1163,40 @@ END:VCALENDAR`;
             {/* LEFT COLUMN */}
             <div className="space-y-8">
               {/* Program */}
-              {eventConfig.program && (
+              {eventConfig.program && eventConfig.program.length > 0 && (
                 <div className={sectionCardStyle}>
-                  <h3 className="font-serif text-2xl text-xmas-dark mb-6 flex items-center gap-3">
-                    <div className="bg-purple-50 p-2 rounded-xl text-purple-600">
-                      <PartyPopper size={24} />
-                    </div>{' '}
-                    Was erwartet dich?
-                  </h3>
-                  <ul className="space-y-4">
-                    {eventConfig.program.split(',').map((item, idx) => {
-                      const trimmed = item.trim();
-                      const enrichment = Object.keys(PROGRAM_ENRICHMENT).find((k) =>
-                        trimmed.includes(k)
-                      )
-                        ? PROGRAM_ENRICHMENT[
-                            Object.keys(PROGRAM_ENRICHMENT).find((k) =>
-                              trimmed.includes(k)
-                            ) as string
-                          ]
-                        : { desc: '', icon: Sparkles, color: 'text-stone-400 bg-stone-50' };
-                      const Icon = enrichment.icon;
-                      return (
-                        <li
-                          key={idx}
-                          className="flex items-start gap-4 p-3 rounded-xl hover:bg-stone-50 transition-colors"
-                        >
-                          <div className={`shrink-0 p-2.5 rounded-xl ${enrichment.color}`}>
-                            <Icon size={20} />
-                          </div>
-                          <div>
-                            <span className="text-stone-800 font-bold block text-lg">
-                              {trimmed}
-                            </span>
-                            {enrichment.desc && (
-                              <span className="text-stone-500 text-sm leading-snug">
-                                {enrichment.desc}
+                  <div className={cardHeaderStyle}>
+                    <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
+                      Was erwartet dich?
+                    </h3>
+                  </div>
+                  <div className={cardContentStyle}>
+                    <ul className="space-y-6">
+                      {eventConfig.program.map((item) => {
+                        const Icon = getIconComponent(item.icon);
+                        return (
+                          <li
+                            key={item.id}
+                            className="flex items-start gap-5 rounded-xl hover:bg-stone-50 transition-colors"
+                          >
+                            <div className={`shrink-0 p-2.5 rounded-xl ${item.color}`}>
+                              <Icon size={20} />
+                            </div>
+                            <div>
+                              <span className="text-stone-800 font-bold block text-base md:text-lg" style={{ lineHeight: '1.25', marginBottom: '0.33em' }}>
+                                {item.title}
                               </span>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                              {item.description && (
+                                <span className="text-stone-500 text-sm leading-snug">
+                                  {item.description}
+                                </span>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
                 </div>
               )}
               {/* Slider */}
@@ -1195,63 +1206,72 @@ END:VCALENDAR`;
             {/* RIGHT COLUMN */}
             <div className="space-y-8">
               {/* Time & Place */}
-              <div className={sectionCardStyle + ' relative overflow-hidden flex flex-col'}>
-                <h3 className="font-serif text-2xl text-xmas-dark mb-6 flex items-center gap-3">
-                  <div className="bg-blue-50 p-2 rounded-xl text-blue-600">
-                    <Calendar size={24} />
-                  </div>{' '}
-                  Wann & Wo?
-                </h3>
-                <div className="space-y-4 flex-grow">
-                  <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex items-start gap-3">
-                    <Calendar className="text-stone-600 shrink-0 mt-1" size={20} />
-                    <div>
-                      <p className="font-bold text-stone-800">{eventConfig.date}</p>
-                      <p className="text-stone-500 text-sm">ab {eventConfig.time}</p>
+              <div className={sectionCardStyle + ' relative flex flex-col'}>
+                <div className={cardHeaderStyle}>
+                  <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
+                    Wann & Wo?
+                  </h3>
+                </div>
+                <div className={`${cardContentStyle} flex-grow`}>
+                  <div className="space-y-6">
+                    <div className="text-md md:text-lg flex items-start gap-3">
+                    <div className={`shrink-0 p-2.5 rounded-xl text-blue-600 bg-blue-50`}>
+                      <Calendar size={24} />
                     </div>
-                  </div>
-                  <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex items-start gap-3">
-                    <MapPin className="text-stone-600 shrink-0 mt-1" size={20} />
-                    <div>
-                      <p className="font-bold text-stone-800">{eventConfig.location}</p>
-                      <p className="text-stone-500 text-sm">Alter Peller-Hof</p>
-                    </div>
-                  </div>
-                  <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex items-start gap-3">
-                    <Users size={24} className="text-stone-600 shrink-0 mt-1" />
-                    <div>
-                      <p className="font-bold text-stone-800">
-                        {eventConfig.maxGuests - totalAttending} / {eventConfig.maxGuests}
-                      </p>
-                      <p className="text-stone-500 text-sm">Plätze verfügbar</p>
-                    </div>
-                  </div>
-                  {eventConfig.cost && (
-                  <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex items-start gap-3">
-                      <Euro className="text-amber-600 shrink-0 mt-1" size={20} />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-amber-900">Unkostenbeitrag</p>
-                          <div className="relative group">
-                            <Info className="text-amber-600 cursor-help" size={16} />
-                            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-stone-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-10 shadow-lg">
-                              <p className="text-center">Bitte passend zur Veranstaltung mitbringen. Dieser Betrag deckt die Kosten für Getränke, Location und Organisation.</p>
-                              <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-stone-800"></div>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-amber-800/80 text-sm">{eventConfig.cost}</p>
+                      <div>
+                        <p className="font-bold text-stone-800">{eventConfig.date}</p>
+                        <p className="text-stone-500 text-sm">ab {eventConfig.time}</p>
                       </div>
                     </div>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <button
-                    onClick={downloadIcs}
-                    className="w-full flex items-center justify-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-700 p-3 rounded-xl font-medium transition-colors text-sm"
-                  >
-                    <Download size={16} /> Kalendereintrag speichern
-                  </button>
+                    <div className="text-md md:text-lg flex items-start gap-3">
+                    <div className={`shrink-0 p-2.5 rounded-xl text-blue-600 bg-blue-50`}>
+                      <MapPin size={24} />
+                    </div>
+                      <div>
+                        <p className="font-bold text-stone-800">{eventConfig.location}</p>
+                        <p className="text-stone-500 text-sm">Alter Peller-Hof</p>
+                      </div>
+                    </div>
+                    <div className="text-md md:text-lg flex items-start gap-3">
+                    <div className={`shrink-0 p-2.5 rounded-xl text-blue-600 bg-blue-50`}>
+                      <Users size={24} />
+                    </div>
+                      <div>
+                        <p className="font-bold text-stone-800">
+                          {eventConfig.maxGuests - totalAttending} / {eventConfig.maxGuests}
+                        </p>
+                        <p className="text-stone-500 text-sm">Plätzen verfügbar</p>
+                      </div>
+                    </div>
+                    {eventConfig.cost && (
+                    <div className="text-md md:text-lg flex items-start gap-3">
+                    <div className={`shrink-0 p-2.5 rounded-xl text-stone-600 bg-stone-50`}>
+                      <Euro size={24} />
+                    </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-stone-800">Unkostenbeitrag</p>
+                            <div className="relative group">
+                              <Info className="text-stone-600 cursor-help" size={16} />
+                              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-stone-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-10 shadow-lg">
+                                <p className="text-center">Bitte passend zur Veranstaltung mitbringen. Dieser Betrag deckt die Kosten für Getränke, Location und Organisation.</p>
+                                <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-stone-800"></div>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-stone-500 text-sm">{eventConfig.cost}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4">
+                    <button
+                      onClick={downloadIcs}
+                      className="w-full flex items-center justify-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-700 p-3 rounded-xl font-medium transition-colors text-sm"
+                    >
+                      <Download size={16} /> Kalendereintrag speichern
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1272,13 +1292,20 @@ END:VCALENDAR`;
 
           {/* Footer Signoff */}
           <div className="text-center pt-6 pb-6 text-stone-400/80">
-            <p className="font-serif text-xl text-stone-600 mb-2">Bis dahin,</p>
-            <p className="font-bold mb-4 text-xmas-gold">{eventConfig.hosts}</p>
-            {eventConfig.contactEmail && (
-              <p className="text-sm flex justify-center items-center gap-2 text-stone-600">
-                <Mail size={14} /> {eventConfig.contactEmail}
-              </p>
-            )}
+            <p className="font-serif text-2xl text-stone-600 mb-2">Bis dahin,</p>
+            <p className="mb-4 text-xl text-xmas-gold">{eventConfig.hosts}</p>
+            <div className="flex flex-col gap-2 items-center">
+              {eventConfig.contactEmail && (
+                <a href={`mailto:${eventConfig.contactEmail}`} className="text-sm flex justify-center items-center gap-2 text-stone-600 hover:text-stone-800 transition-colors">
+                  <Mail size={14} /> {eventConfig.contactEmail}
+                </a>
+              )}
+              {eventConfig.contactPhone && (
+                <a href={`tel:${eventConfig.contactPhone}`} className="text-sm flex justify-center items-center gap-2 text-stone-600 hover:text-stone-800 transition-colors">
+                  <Phone size={14} /> {eventConfig.contactPhone}
+                </a>
+              )}
+            </div>
           </div>
 
           {/* CTA to Action Tab (Replaces old button logic) */}
@@ -1297,13 +1324,16 @@ END:VCALENDAR`;
       {activeTab === 'list' && (
         <div className="animate-fade-in space-y-8">
           <div className={sectionCardStyle}>
-            <h3 className="font-serif text-2xl text-xmas-dark mb-6 flex items-center gap-3">
-              <div className="bg-pink-50 p-2 rounded-xl text-pink-600">
-                <HeartHandshake size={24} />
-              </div>{' '}
-              Wer ist dabei?
-            </h3>
-            <div className="flex flex-wrap justify-center gap-6">
+            <div className={cardHeaderStyle}>
+              <h3 className="font-serif text-2xl text-xmas-dark flex items-center gap-3">
+                <div className="bg-pink-50 p-2 rounded-xl text-pink-600">
+                  <HeartHandshake size={24} />
+                </div>
+                Wer ist dabei?
+              </h3>
+            </div>
+            <div className={cardContentStyle}>
+              <div className="flex flex-wrap justify-center gap-6">
               {attendingGuests.map((p) => {
                 const show = p.showNameInBuffet !== false;
                 return (
@@ -1334,6 +1364,7 @@ END:VCALENDAR`;
                   </span>
                 </div>
               ))}
+              </div>
             </div>
           </div>
           <FoodDisplay participants={allParticipants} />

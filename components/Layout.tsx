@@ -44,51 +44,23 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {children}
       </main>
 
-      <footer className="bg-white border-t border-stone-100 text-stone-400 py-12 text-center text-sm mt-12">
+      <footer className="bg-white border-t border-stone-100 text-stone-400 py-8 text-center text-sm mt-12">
         <div className="container mx-auto px-4">
-          <div className="flex justify-center mb-6 text-xmas-red/20">
-            <Snowflake size={32} />
-          </div>
-          <p className="font-serif text-stone-600 mb-2">
-            &copy; {new Date().getFullYear()} {config.title} Community.
-          </p>
-          <p className="text-stone-400">
-            Gemacht mit <span className="text-xmas-pink">❤️</span> für Solo-Selbstständige.
-          </p>
-
-          {/* DEV / DEMO LINKS */}
-          <div className="mt-8 pt-6 border-t border-stone-50 inline-flex flex-wrap justify-center gap-4 text-xs text-stone-400">
-            <span className="font-bold uppercase tracking-widest">Demo:</span>
+          <div className="flex justify-center gap-4">
             <a
-              href="#/admin"
-              onClick={safeNavigate('#/admin')}
-              className="hover:text-xmas-red transition-colors"
+              href="#/datenschutz"
+              onClick={safeNavigate('#/datenschutz')}
+              className="hover:text-stone-600 transition-colors"
             >
-              Admin
+              Datenschutzerklärung
             </a>
             <span>•</span>
             <a
-              href="#/p/a3f7k9m2"
-              onClick={safeNavigate('#/p/a3f7k9m2')}
-              className="hover:text-xmas-red transition-colors"
+              href="#/impressum"
+              onClick={safeNavigate('#/impressum')}
+              className="hover:text-stone-600 transition-colors"
             >
-              Gast (Anna)
-            </a>
-            <span>•</span>
-            <a
-              href="#/p/b8x2l1p9"
-              onClick={safeNavigate('#/p/b8x2l1p9')}
-              className="hover:text-xmas-red transition-colors"
-            >
-              Gast (Markus)
-            </a>
-            <span>•</span>
-            <a
-              href="#/p/judith-demo"
-              onClick={safeNavigate('#/p/judith-demo')}
-              className="hover:text-xmas-red transition-colors"
-            >
-              Gast (Judith)
+              Impressum
             </a>
           </div>
         </div>

@@ -61,6 +61,7 @@ export type Database = {
         Row: {
           allow_plus_one: boolean | null;
           contact_email: string | null;
+          contact_phone: string | null;
           cost: string | null;
           date: string | null;
           dietary_options: string[] | null;
@@ -78,6 +79,7 @@ export type Database = {
         Insert: {
           allow_plus_one?: boolean | null;
           contact_email?: string | null;
+          contact_phone?: string | null;
           cost?: string | null;
           date?: string | null;
           dietary_options?: string[] | null;
@@ -95,6 +97,7 @@ export type Database = {
         Update: {
           allow_plus_one?: boolean | null;
           contact_email?: string | null;
+          contact_phone?: string | null;
           cost?: string | null;
           date?: string | null;
           dietary_options?: string[] | null;
