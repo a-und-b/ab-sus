@@ -335,20 +335,23 @@ export const GuestPage: React.FC<GuestPageProps> = ({ id }) => {
         avatarStyle !== participant.avatarStyle ||
         avatarSeed !== participant.avatarSeed ||
         avatarImage !== (participant.avatarImage || '') ||
-        (status === 'attending' && hasPlusOne !== !!participant.plusOne) ||
-        (status === 'attending' && hasPlusOne && plusOne !== (participant.plusOne || '')) ||
-        (status === 'attending' &&
-          hasPlusOne &&
-          currentPlusOneAllergies !== (participant.plusOneAllergies || '')) ||
-        contribution !== (participant.contribution || '') ||
         currentAllergies !== (participant.allergies || '') ||
-        activityVotesChanged ||
-        foodName !== (participant.food?.name || '') ||
-        foodCategory !== (participant.food?.category || '') ||
-        foodDesc !== (participant.food?.description || '') ||
-        showNameInBuffet !== (participant.showNameInBuffet !== false) ||
-        tags.isVegan !== (participant.food?.isVegan || false) ||
-        tags.isGlutenFree !== (participant.food?.isGlutenFree || false);
+        (status === 'attending' && (
+          hasPlusOne !== !!participant.plusOne ||
+          (hasPlusOne && plusOne !== (participant.plusOne || '')) ||
+          (hasPlusOne && currentPlusOneAllergies !== (participant.plusOneAllergies || '')) ||
+          contribution !== (participant.contribution || '') ||
+          activityVotesChanged ||
+          foodName !== (participant.food?.name || '') ||
+          foodCategory !== (participant.food?.category || '') ||
+          foodDesc !== (participant.food?.description || '') ||
+          showNameInBuffet !== (participant.showNameInBuffet !== false) ||
+          tags.isVegan !== (participant.food?.isVegan || false) ||
+          tags.isGlutenFree !== (participant.food?.isGlutenFree || false) ||
+          tags.isLactoseFree !== (participant.food?.isLactoseFree || false) ||
+          tags.containsAlcohol !== (participant.food?.containsAlcohol || false) ||
+          tags.containsNuts !== (participant.food?.containsNuts || false)
+        ));
 
       if (hasChanges) {
         if (isFormValid()) {
@@ -937,6 +940,8 @@ END:VCALENDAR`;
 
   const renderVotingSection = () => {
     const activeActivities = (eventConfig.activities || []).filter((a) => a.isActive);
+    const deadlinePassed = new Date() > new Date(eventConfig.rsvpDeadline);
+    const deadlineDateStr = new Date(eventConfig.rsvpDeadline).toLocaleDateString();
     
     if (activeActivities.length === 0) {
       return null; // Don't show voting step if no activities
@@ -955,20 +960,30 @@ END:VCALENDAR`;
           </div>
         )}
         <div className={`${isOnboarding ? '' : cardContentStyle} space-y-4`}>
-          <p className="text-stone-600 text-sm mb-4">
-            Wähle die Aktivitäten aus, die dich am meisten interessieren. Deine Stimme hilft uns, das Programm zu gestalten!
-          </p>
+          {deadlinePassed ? (
+            <div className="bg-stone-100 px-4 py-3 rounded-xl text-stone-600 text-sm mb-4 flex items-center gap-2">
+              <Lock size={16} />
+              <span>Abstimmung beendet (Deadline: {deadlineDateStr})</span>
+            </div>
+          ) : (
+            <p className="text-stone-600 text-sm mb-4">
+              Wähle die Aktivitäten aus, die dich am meisten interessieren. Deine Stimme hilft uns, das Programm zu gestalten!
+            </p>
+          )}
           <div className="space-y-3">
             {activeActivities.map((activity) => {
               const isSelected = activityVotes.includes(activity.id);
               return (
                 <button
                   key={activity.id}
-                  onClick={() => toggleActivityVote(activity.id)}
+                  onClick={() => !deadlinePassed && toggleActivityVote(activity.id)}
+                  disabled={deadlinePassed}
                   className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                    isSelected
-                      ? 'bg-blue-50 border-blue-500 shadow-sm'
-                      : 'bg-white border-stone-200 hover:border-stone-400 hover:bg-stone-50'
+                    deadlinePassed
+                      ? 'bg-stone-50 border-stone-200 opacity-60 cursor-not-allowed'
+                      : isSelected
+                        ? 'bg-blue-50 border-blue-500 shadow-sm'
+                        : 'bg-white border-stone-200 hover:border-stone-400 hover:bg-stone-50'
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -1016,13 +1031,20 @@ END:VCALENDAR`;
                     key={suggestion}
                     type="button"
                     onClick={() => {
-                      if (contribution.trim()) {
-                        setContribution(`${contribution}, ${suggestion}`);
-                      } else {
-                        setContribution(suggestion);
+                      if (!deadlinePassed) {
+                        if (contribution.trim()) {
+                          setContribution(`${contribution}, ${suggestion}`);
+                        } else {
+                          setContribution(suggestion);
+                        }
                       }
                     }}
-                    className="text-xs bg-stone-50 hover:bg-white hover:shadow-sm border border-stone-200 text-stone-600 px-3 py-1.5 rounded-lg transition-all active:scale-95"
+                    disabled={deadlinePassed}
+                    className={`text-xs border px-3 py-1.5 rounded-lg transition-all ${
+                      deadlinePassed
+                        ? 'bg-stone-50 border-stone-200 text-stone-400 opacity-60 cursor-not-allowed'
+                        : 'bg-stone-50 hover:bg-white hover:shadow-sm border-stone-200 text-stone-600 active:scale-95'
+                    }`}
                   >
                     {suggestion}
                   </button>
@@ -1032,10 +1054,11 @@ END:VCALENDAR`;
           )}
           <textarea
             value={contribution}
-            onChange={(e) => setContribution(e.target.value)}
+            onChange={(e) => !deadlinePassed && setContribution(e.target.value)}
             placeholder="Dein Beitrag..."
             rows={2}
-            className={inputStyle}
+            disabled={deadlinePassed}
+            className={`${inputStyle} ${deadlinePassed ? 'opacity-60 cursor-not-allowed bg-stone-50' : ''}`}
           />
         </div>
         </div>
@@ -1413,11 +1436,11 @@ END:VCALENDAR`;
                                    </div>
 
                                    {activity.description && (
-                                      <div className="relative group">
-                                        <Info className={`${isTopThree ? 'text-blue-400' : 'text-stone-400'} cursor-help hover:text-blue-600 transition-colors`} size={20} />
-                                        <div className="absolute right-0 bottom-full mb-2 w-64 p-3 bg-stone-800 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50 shadow-xl">
-                                          <p className="text-center leading-relaxed">{activity.description}</p>
-                                          <div className="absolute right-2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-stone-800"></div>
+                                      <div className="relative group shrink-0">
+                                        <Info className="text-stone-600 cursor-help" size={16} />
+                                        <div className="absolute right-0 bottom-full mb-2 w-48 p-2 bg-stone-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-10 shadow-lg">
+                                          <p className="text-center">{activity.description}</p>
+                                          <div className="absolute right-4 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-stone-800"></div>
                                         </div>
                                       </div>
                                    )}
@@ -1425,17 +1448,17 @@ END:VCALENDAR`;
                               </div>
 
                               {/* Progress Bar */}
-                              <div className="relative h-3 bg-stone-200/50 rounded-full overflow-hidden shadow-inner">
+                              <div className="relative h-2.5 bg-stone-200 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full transition-all duration-1000 ease-out rounded-full ${
-                                    isTopThree ? 'bg-blue-500 shadow-lg shadow-blue-500/30' : 'bg-stone-400'
+                                    isTopThree ? 'bg-blue-500' : 'bg-stone-400'
                                   }`}
                                   style={{ width: `${percentage}%` }}
                                 ></div>
                               </div>
                               <div className="flex justify-between mt-1 px-1">
-                                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                                  {percentage.toFixed(0)}%
+                                <span className="text-xs text-stone-400">
+                                  {percentage.toFixed(0)}% der Stimmen
                                 </span>
                               </div>
                             </div>
