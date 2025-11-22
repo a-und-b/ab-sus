@@ -3,6 +3,7 @@ import { Snowflake } from 'lucide-react';
 import { Chatbot } from './Chatbot';
 import { dataService, CONFIG_UPDATED_EVENT } from '../services/dataService';
 import { EventConfig, DEFAULT_EVENT_CONFIG } from '../types';
+import headerImage from '../images/Selbst-Selig-Hero-final.svg';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState<EventConfig>(DEFAULT_EVENT_CONFIG);
@@ -33,7 +34,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       <header className="relative bg-xmas-green w-full shadow-md overflow-hidden">
         <div className="w-full max-w-[1400px] mx-auto relative">
           <img
-            src="https://cdn.andersundbesser.de/a-und-b/sus-25/header.png"
+            src={headerImage}
             alt="Selbst & Selig Weihnachtsfeier"
             className="w-full h-auto object-cover min-h-[200px] max-h-[350px] opacity-90"
           />

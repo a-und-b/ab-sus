@@ -1385,49 +1385,58 @@ END:VCALENDAR`;
                                   : 'bg-stone-50 border-stone-200'
                               }`}
                             >
-                              <div className="flex items-start justify-between gap-4 mb-2">
-                                <div className="flex items-start gap-3 flex-1">
-                                  <div
-                                    className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                                      isTopThree
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-stone-300 text-stone-600'
-                                    }`}
-                                  >
-                                    {index + 1}
-                                  </div>
-                                  <div className="flex-1">
-                                    <p className={`font-bold text-base ${isTopThree ? 'text-blue-900' : 'text-stone-800'}`}>
-                                      {activity.title}
-                                    </p>
-                                    {activity.description && (
-                                      <p className={`text-sm mt-1 ${isTopThree ? 'text-blue-700' : 'text-stone-500'}`}>
-                                        {activity.description}
-                                      </p>
-                                    )}
-                                  </div>
+                              <div className="flex items-center gap-4 mb-3">
+                                <div
+                                  className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm ${
+                                    isTopThree
+                                      ? 'bg-blue-500 text-white'
+                                      : 'bg-stone-300 text-stone-600'
+                                  }`}
+                                >
+                                  {index + 1}
                                 </div>
-                                <div className="text-right shrink-0">
-                                  <p className={`font-bold text-lg ${isTopThree ? 'text-blue-600' : 'text-stone-600'}`}>
-                                    {activity.voteCount}
+                                <div className="flex-1 min-w-0">
+                                  <p className={`font-bold text-lg truncate ${isTopThree ? 'text-blue-900' : 'text-stone-800'}`}>
+                                    {activity.title}
                                   </p>
-                                  <p className="text-xs text-stone-400">
-                                    {activity.voteCount === 1 ? 'Stimme' : 'Stimmen'}
-                                  </p>
+                                </div>
+
+                                {/* Vote Count & Info */}
+                                <div className="flex items-center gap-3 shrink-0">
+                                   <div className="text-right">
+                                      <span className={`font-bold text-lg ${isTopThree ? 'text-blue-600' : 'text-stone-600'}`}>
+                                        {activity.voteCount}
+                                      </span>
+                                      <span className="text-xs text-stone-400 ml-1">
+                                        {activity.voteCount === 1 ? 'Stimme' : 'Stimmen'}
+                                      </span>
+                                   </div>
+
+                                   {activity.description && (
+                                      <div className="relative group">
+                                        <Info className={`${isTopThree ? 'text-blue-400' : 'text-stone-400'} cursor-help hover:text-blue-600 transition-colors`} size={20} />
+                                        <div className="absolute right-0 bottom-full mb-2 w-64 p-3 bg-stone-800 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50 shadow-xl">
+                                          <p className="text-center leading-relaxed">{activity.description}</p>
+                                          <div className="absolute right-2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-stone-800"></div>
+                                        </div>
+                                      </div>
+                                   )}
                                 </div>
                               </div>
-                              <div className="mt-3">
-                                <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full transition-all duration-500 ${
-                                      isTopThree ? 'bg-blue-500' : 'bg-stone-400'
-                                    }`}
-                                    style={{ width: `${percentage}%` }}
-                                  ></div>
-                                </div>
-                                <p className="text-xs text-stone-400 mt-1">
-                                  {percentage.toFixed(0)}% der Stimmen
-                                </p>
+
+                              {/* Progress Bar */}
+                              <div className="relative h-3 bg-stone-200/50 rounded-full overflow-hidden shadow-inner">
+                                <div
+                                  className={`h-full transition-all duration-1000 ease-out rounded-full ${
+                                    isTopThree ? 'bg-blue-500 shadow-lg shadow-blue-500/30' : 'bg-stone-400'
+                                  }`}
+                                  style={{ width: `${percentage}%` }}
+                                ></div>
+                              </div>
+                              <div className="flex justify-between mt-1 px-1">
+                                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                                  {percentage.toFixed(0)}%
+                                </span>
                               </div>
                             </div>
                           );
